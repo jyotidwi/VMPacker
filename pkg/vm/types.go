@@ -1,0 +1,67 @@
+package vm
+
+// ============================================================
+// 公共类型 + 接口定义
+//
+// 所有架构解码器和翻译器都遵循这些接口，
+// 以便将来扩展到新架构（x86, RISC-V）或新二进制格式（PE, Mach-O）。
+// ============================================================
+
+// Instruction 通用指令表示（架构无关）
+type Instruction struct {
+	Raw    uint32
+	Op     int
+	Rd     int // 目标寄存器
+	Rn     int // 第一源寄存器
+	Rm     int // 第二源寄存器
+	Imm    int64
+	Shift  int
+	Cond   int
+	SF     bool // 64-bit (true) vs 32-bit (false)
+	Offset int  // 指令在函数内的偏移
+	WB     int  // Writeback 模式 (0=无, 1=post, 3=pre)
+}
+
+// Decoder 架构解码器接口
+type Decoder interface {
+	// Decode 解码一条原始指令
+	Decode(raw uint32, offset int) Instruction
+	// InstName 返回指令名称
+	InstName(op int) string
+}
+
+// TranslateResult 翻译结果
+type TranslateResult struct {
+	Bytecode    []byte
+	Unsupported []string
+	TotalInsts  int
+	TransInsts  int
+}
+
+// Translator 字节码翻译器接口
+type Translator interface {
+	// Translate 将一组指令翻译为 VM 字节码
+	Translate(instructions []Instruction) (*TranslateResult, error)
+}
+
+// FuncInfo 函数元信息
+type FuncInfo struct {
+	Name    string
+	Addr    uint64
+	Size    uint64
+	Offset  uint64
+	Section string
+}
+
+// FuncBytecode 加密后的字节码
+type FuncBytecode struct {
+	Info      *FuncInfo
+	Encrypted []byte
+	XorKey    byte
+}
+
+// Packer 二进制格式注入器接口
+type Packer interface {
+	// Process 执行完整的 VMP 保护流程
+	Process() error
+}

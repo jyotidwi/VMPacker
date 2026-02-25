@@ -1,0 +1,89 @@
+========================================
+  vmpacker - ARM64 ELF VMP ????
+========================================
+[*] ??: demo\demo_license
+[*] ??: demo\demo_license2.vmp
+[*] ????: [check_license]
+
+[*] ELF: EM_AARCH64, Type: ET_EXEC
+[*] VM interp blob: 2904 bytes
+
+[*] Processing: check_license
+    Addr: 0x4005B4, Size: 168 bytes, Section: .text
+    Instructions: 42
+    --- Disasm ---
+    0x0000: MOVZ         raw=0x52800002
+    0x0004: CBZ          raw=0xB4000160
+    0x0008: LDRB(imm)    raw=0x39400001
+    0x000C: CBZ          raw=0x340004A1
+    0x0010: ORR(reg)     raw=0xAA0003E2
+    0x0014: MOVZ         raw=0x52800001
+    0x0018: ADD(imm)     raw=0x11000421
+    0x001C: LDRB(imm)    raw=0x38401C43
+    0x0020: CBNZ         raw=0x35FFFFC3
+    0x0024: MOVZ         raw=0x52800002
+    0x0028: SUBS(imm)    raw=0x7100203F
+    0x002C: B.cond       raw=0x54000060
+    0x0030: ORR(reg)     raw=0x2A0203E0
+    0x0034: RET          raw=0xD65F03C0
+    0x0038: ORR(reg)     raw=0xAA0003E1
+    0x003C: ADD(imm)     raw=0x91002003
+    0x0040: MOVZ         raw=0xD2800002
+    0x0044: MOVZ         raw=0xD2800B44
+    0x0048: UBFM         raw=0xD37BE840
+    0x004C: SUB(reg)     raw=0xCB020000
+    0x0050: LDRB(imm)    raw=0x38401422
+    0x0054: ADD(reg)     raw=0x8B020000
+    0x0058: EOR(reg)     raw=0xCA040002
+    0x005C: SUBS(reg)    raw=0xEB03003F
+    0x0060: B.cond       raw=0x54FFFF41
+    0x0064: ADRP         raw=0x90000001
+    0x0068: ADD(imm)     raw=0x911DA021
+    0x006C: ADD(imm)     raw=0x91002025
+    0x0070: MOVZ         raw=0xD2800003
+    0x0074: MOVZ         raw=0xD2800B44
+    0x0078: UBFM         raw=0xD37BE860
+    0x007C: SUB(reg)     raw=0xCB030000
+    0x0080: LDRB(imm)    raw=0x38401423
+    0x0084: ADD(reg)     raw=0x8B030000
+    0x0088: EOR(reg)     raw=0xCA040003
+    0x008C: SUBS(reg)    raw=0xEB0100BF
+    0x0090: B.cond       raw=0x54FFFF41
+    0x0094: SUBS(reg)    raw=0xEB02007F
+    0x0098: CSINC        raw=0x1A9F17E2
+    0x009C: B            raw=0x17FFFFE5
+    0x00A0: MOVZ         raw=0x52800002
+    0x00A4: B            raw=0x17FFFFE3
+    --- End ---
+    Translated: 42/42
+    Bytecode: 272 bytes
+
+[*] Injecting 1 functions...
+    Payload at file offset: 0x38D8, VA: 0x8008D8, size: 3176
+    VM interp VA: 0x8008E0
+    [check_license] bytecode VA: 0x801430, len: 272
+    PT_NOTE[5] -> PT_LOAD RX: off=0x38D8 va=0x8008D8 sz=0xC68
+    [check_license] Trampoline (52 bytes) + Garbage (116 bytes):
+      +00: 0x910003E5
+      +04: 0xAA1D03E6
+      +08: 0xAA1E03E7
+      +0C: 0xA9BF7BFD
+      +10: 0x910003FD
+      +14: 0xD2828602
+      +18: 0xF2A01002
+      +1C: 0xF2C00002
+      +20: 0xD2802203
+      +24: 0xD28014A4
+      +28: 0x941000C1
+      +2C: 0xA8C17BFD
+      +30: 0xD65F03C0
+    [+] check_license VMP protected
+    [strip] .note.gnu.build-id zeroed (off=0x23C, sz=36)
+    [strip] .comment zeroed (off=0x1038, sz=45)
+    [strip] .symtab zeroed (off=0x2030, sz=2496)
+    [strip] .strtab zeroed (off=0x29F0, sz=1163)
+[*] Symbols stripped
+
+[+] Output: demo\demo_license2.vmp
+
+[+] VMP ????!
