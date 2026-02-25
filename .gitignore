@@ -1,6 +1,7 @@
 # Build outputs
 build/
--p
+vmp.zip
+git_diff.txt
 
 # Protected binaries
 vmp2.0/

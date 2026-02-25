@@ -54,6 +54,10 @@ func (t *Translator) trBranchCond(inst vm.Instruction) error {
 		vmOp = vm.OpJgt
 	case COND_LS:
 		vmOp = vm.OpJle
+	case COND_MI:
+		vmOp = vm.OpJl // MI: N==1 → FL_SIGN set
+	case COND_PL:
+		vmOp = vm.OpJge // PL: N==0 → FL_SIGN not set
 	default:
 		return fmt.Errorf("不支持的条件码 0x%X", inst.Cond)
 	}
@@ -112,12 +116,12 @@ func (t *Translator) trCSEL(inst vm.Instruction) error {
 		return err
 	}
 
-	if inst.Rn == 31 {
+	if inst.Rn == vm.REG_XZR {
 		rn = 14
 		t.emit(vm.OpMovImm, rn)
 		t.emitU64(0)
 	}
-	if inst.Rm == 31 {
+	if inst.Rm == vm.REG_XZR {
 		rm = 15
 		t.emit(vm.OpMovImm, rm)
 		t.emitU64(0)
@@ -141,6 +145,14 @@ func (t *Translator) trCSEL(inst vm.Instruction) error {
 		vmOp = vm.OpJae
 	case COND_CC:
 		vmOp = vm.OpJb
+	case COND_HI:
+		vmOp = vm.OpJgt
+	case COND_LS:
+		vmOp = vm.OpJle
+	case COND_MI:
+		vmOp = vm.OpJl // MI: N==1 → FL_SIGN set
+	case COND_PL:
+		vmOp = vm.OpJge // PL: N==0 → FL_SIGN not set
 	default:
 		vmOp = vm.OpJe
 	}

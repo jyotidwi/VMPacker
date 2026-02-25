@@ -1,0 +1,290 @@
+package arm64
+
+import "github.com/vmpacker/pkg/vm"
+
+// ============================================================
+// 加载/存储 模式表
+//
+// 覆盖: LDP/STP, LDR/STR(imm unsigned/pre/post), LDRB/STRB,
+//       LDRH/STRH, LDR/STR(reg), LDRSB/LDRSH/LDRSW,
+//       LD1/ST1(SIMD)
+// ============================================================
+
+var ldstPatterns = []InstrPattern{
+	// ================================================================
+	// LDP/STP (load/store pair)
+	// 编码: opc:101:V:cat:L:imm7:Rt2:Rn:Rt
+	//   opc=x0 → 32-bit, opc=1x → 64-bit  (sf=bit31)
+	//   V=0 integer
+	//   cat: 001=post, 010=signed-offset, 011=pre
+	//   L: 0=store, 1=load
+	// 匹配: bits[28:27]=01, bit26=0 → pair integer
+	// ================================================================
+	{
+		Name: "STP", Mask: 0x1C400000, Value: 0x08000000, Op: STP,
+		Fields: []FieldDef{
+			{Name: "sf", Hi: 31, Lo: 31},
+			{Name: "wb", Hi: 25, Lo: 23},
+			{Name: "imm7", Hi: 21, Lo: 15, Signed: true},
+			{Name: "Rm", Hi: 14, Lo: 10}, // Rt2
+			fRn, fRd,                     // Rn, Rt
+		},
+		Post: postPair,
+	},
+	{
+		Name: "LDP", Mask: 0x1C400000, Value: 0x08400000, Op: LDP,
+		Fields: []FieldDef{
+			{Name: "sf", Hi: 31, Lo: 31},
+			{Name: "wb", Hi: 25, Lo: 23},
+			{Name: "imm7", Hi: 21, Lo: 15, Signed: true},
+			{Name: "Rm", Hi: 14, Lo: 10},
+			fRn, fRd,
+		},
+		Post: postPair,
+	},
+
+	// ================================================================
+	// SIMD load/store (LD1/ST1 multiple structures)
+	// 编码: 0:Q:001100:L:000000:opcode:00:Rn:Rt
+	// ================================================================
+	{
+		Name: "LD1_16B", Mask: 0xBFFF0000, Value: 0x0C400000, Op: LD1_16B,
+		Fields: []FieldDef{fRn, fRd, {Name: "opcode", Hi: 15, Lo: 12}},
+		Post:   postSimdMulti,
+	},
+	{
+		Name: "ST1_16B", Mask: 0xBFFF0000, Value: 0x0C000000, Op: ST1_16B,
+		Fields: []FieldDef{fRn, fRd, {Name: "opcode", Hi: 15, Lo: 12}},
+		Post:   postSimdMulti,
+	},
+
+	// ================================================================
+	// Load/Store register (register offset)
+	// 编码: size:111:V:00:opc:1:Rm:option:S:10:Rn:Rt
+	// ================================================================
+	{
+		Name: "LDRB_REG", Mask: 0xFFE00C00, Value: 0x38600800, Op: LDRB_REG,
+		Fields: []FieldDef{fRm16, fRn, fRd},
+	},
+	{
+		Name: "STRB_REG", Mask: 0xFFE00C00, Value: 0x38200800, Op: STRB_REG,
+		Fields: []FieldDef{fRm16, fRn, fRd},
+	},
+	{
+		Name: "LDR_REG_32", Mask: 0xFFE00C00, Value: 0xB8600800, Op: LDR_REG,
+		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+	},
+	{
+		Name: "STR_REG_32", Mask: 0xFFE00C00, Value: 0xB8200800, Op: STR_REG,
+		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+	},
+	{
+		Name: "LDR_REG_64", Mask: 0xFFE00C00, Value: 0xF8600800, Op: LDR_REG,
+		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+	},
+	{
+		Name: "STR_REG_64", Mask: 0xFFE00C00, Value: 0xF8200800, Op: STR_REG,
+		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+	},
+
+	// ================================================================
+	// Load/Store register (immediate pre/post-index)
+	// 编码: size:111:V:00:opc:0:imm9:wb:Rn:Rt
+	//   wb=01 → post-index, wb=11 → pre-index
+	// ================================================================
+	// STR 32-bit post
+	{
+		Name: "STR_IMM32_POST", Mask: 0xFFE00400, Value: 0xB8000400, Op: STR_IMM,
+		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, {Name: "wb", Hi: 11, Lo: 10}, fRn, fRd},
+		Post:   postLdrStrPrePost(false),
+	},
+	// STR 64-bit post
+	{
+		Name: "STR_IMM64_POST", Mask: 0xFFE00400, Value: 0xF8000400, Op: STR_IMM,
+		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, {Name: "wb", Hi: 11, Lo: 10}, fRn, fRd},
+		Post:   postLdrStrPrePost(true),
+	},
+	// LDR 32-bit post
+	{
+		Name: "LDR_IMM32_POST", Mask: 0xFFE00400, Value: 0xB8400400, Op: LDR_IMM,
+		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, {Name: "wb", Hi: 11, Lo: 10}, fRn, fRd},
+		Post:   postLdrStrPrePost(false),
+	},
+	// LDR 64-bit post
+	{
+		Name: "LDR_IMM64_POST", Mask: 0xFFE00400, Value: 0xF8400400, Op: LDR_IMM,
+		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, {Name: "wb", Hi: 11, Lo: 10}, fRn, fRd},
+		Post:   postLdrStrPrePost(true),
+	},
+	// STRB pre/post
+	{
+		Name: "STRB_IMM_PP", Mask: 0xFFE00400, Value: 0x38000400, Op: STRB_IMM,
+		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, {Name: "wb", Hi: 11, Lo: 10}, fRn, fRd},
+		Post:   postLdrStrPrePostXZR,
+	},
+	// LDRB pre/post
+	{
+		Name: "LDRB_IMM_PP", Mask: 0xFFE00400, Value: 0x38400400, Op: LDRB_IMM,
+		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, {Name: "wb", Hi: 11, Lo: 10}, fRn, fRd},
+		Post:   postLdrStrPrePostXZR,
+	},
+	// STRH pre/post
+	{
+		Name: "STRH_IMM_PP", Mask: 0xFFE00400, Value: 0x78000400, Op: STRH_IMM,
+		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, {Name: "wb", Hi: 11, Lo: 10}, fRn, fRd},
+		Post:   postLdrStrPrePostXZR,
+	},
+	// LDRH pre/post
+	{
+		Name: "LDRH_IMM_PP", Mask: 0xFFE00400, Value: 0x78400400, Op: LDRH_IMM,
+		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, {Name: "wb", Hi: 11, Lo: 10}, fRn, fRd},
+		Post:   postLdrStrPrePostXZR,
+	},
+
+	// ================================================================
+	// Load/Store register (unsigned offset imm12)
+	// 编码: size:111:V:01:opc:imm12:Rn:Rt
+	// ================================================================
+	// LDR 64-bit unsigned
+	{
+		Name: "LDR_UIMM64", Mask: 0xFFC00000, Value: 0xF9400000, Op: LDR_IMM,
+		Fields: []FieldDef{{Name: "imm12", Hi: 21, Lo: 10}, fRn, fRd},
+		Post:   postUnsigned(8, true),
+	},
+	// STR 64-bit unsigned
+	{
+		Name: "STR_UIMM64", Mask: 0xFFC00000, Value: 0xF9000000, Op: STR_IMM,
+		Fields: []FieldDef{{Name: "imm12", Hi: 21, Lo: 10}, fRn, fRd},
+		Post:   postUnsigned(8, true),
+	},
+	// LDR 32-bit unsigned
+	{
+		Name: "LDR_UIMM32", Mask: 0xFFC00000, Value: 0xB9400000, Op: LDR_IMM,
+		Fields: []FieldDef{{Name: "imm12", Hi: 21, Lo: 10}, fRn, fRd},
+		Post:   postUnsigned(4, false),
+	},
+	// STR 32-bit unsigned
+	{
+		Name: "STR_UIMM32", Mask: 0xFFC00000, Value: 0xB9000000, Op: STR_IMM,
+		Fields: []FieldDef{{Name: "imm12", Hi: 21, Lo: 10}, fRn, fRd},
+		Post:   postUnsigned(4, false),
+	},
+	// LDRB unsigned
+	{
+		Name: "LDRB_UIMM", Mask: 0xFFC00000, Value: 0x39400000, Op: LDRB_IMM,
+		Fields: []FieldDef{{Name: "imm12", Hi: 21, Lo: 10}, fRn, fRd},
+		Post:   postUnsigned(1, false),
+	},
+	// STRB unsigned
+	{
+		Name: "STRB_UIMM", Mask: 0xFFC00000, Value: 0x39000000, Op: STRB_IMM,
+		Fields: []FieldDef{{Name: "imm12", Hi: 21, Lo: 10}, fRn, fRd},
+		Post:   postUnsigned(1, false),
+	},
+	// LDRH unsigned
+	{
+		Name: "LDRH_UIMM", Mask: 0xFFC00000, Value: 0x79400000, Op: LDRH_IMM,
+		Fields: []FieldDef{{Name: "imm12", Hi: 21, Lo: 10}, fRn, fRd},
+		Post:   postUnsigned(2, false),
+	},
+	// STRH unsigned
+	{
+		Name: "STRH_UIMM", Mask: 0xFFC00000, Value: 0x79000000, Op: STRH_IMM,
+		Fields: []FieldDef{{Name: "imm12", Hi: 21, Lo: 10}, fRn, fRd},
+		Post:   postUnsigned(2, false),
+	},
+	// LDRSW unsigned (size=10, opc=10)
+	{
+		Name: "LDRSW_UIMM", Mask: 0xFFC00000, Value: 0xB9800000, Op: LDRSW_IMM,
+		Fields: []FieldDef{{Name: "imm12", Hi: 21, Lo: 10}, fRn, fRd},
+		Post:   postUnsigned(4, true),
+	},
+	// LDRSB unsigned (size=00, opc=10) → 64-bit dest
+	{
+		Name: "LDRSB_UIMM64", Mask: 0xFFC00000, Value: 0x39800000, Op: LDRSB_IMM,
+		Fields: []FieldDef{{Name: "imm12", Hi: 21, Lo: 10}, fRn, fRd},
+		Post:   postUnsigned(1, true),
+	},
+	// LDRSB unsigned (size=00, opc=11) → 32-bit dest
+	{
+		Name: "LDRSB_UIMM32", Mask: 0xFFC00000, Value: 0x39C00000, Op: LDRSB_IMM,
+		Fields: []FieldDef{{Name: "imm12", Hi: 21, Lo: 10}, fRn, fRd},
+		Post:   postUnsigned(1, false),
+	},
+	// LDRSH unsigned (size=01, opc=10)
+	{
+		Name: "LDRSH_UIMM", Mask: 0xFFC00000, Value: 0x79800000, Op: LDRSH_IMM,
+		Fields: []FieldDef{{Name: "imm12", Hi: 21, Lo: 10}, fRn, fRd},
+		Post:   postUnsigned(2, true),
+	},
+}
+
+// ---- Post 处理函数 ----
+
+// postPair LDP/STP 后处理：验证寻址模式 + offset 缩放
+func postPair(f map[string]int64, inst *vm.Instruction) {
+	wb := f["wb"]
+	if wb != 1 && wb != 2 && wb != 3 {
+		inst.Op = int(UNSUPPORTED)
+		return
+	}
+	inst.WB = int(wb)
+	// sf=bit31 直接决定缩放：不存在 opc&0x2 歧义
+	if f["sf"] != 0 {
+		inst.Imm = f["imm7"] * 8
+	} else {
+		inst.Imm = f["imm7"] * 4
+	}
+}
+
+// postSimdMulti SIMD 多结构体 load/store
+func postSimdMulti(f map[string]int64, inst *vm.Instruction) {
+	switch f["opcode"] {
+	case 0b0111:
+		inst.Imm = 16
+	case 0b1010:
+		inst.Imm = 32
+	case 0b0110:
+		inst.Imm = 48
+	case 0b0010:
+		inst.Imm = 64
+	default:
+		inst.Op = int(UNSUPPORTED)
+	}
+}
+
+// postLdrStrPrePost LDR/STR pre/post index
+func postLdrStrPrePost(is64 bool) PostFunc {
+	return func(f map[string]int64, inst *vm.Instruction) {
+		wb := f["wb"]
+		if wb != 1 && wb != 3 {
+			inst.Op = int(UNSUPPORTED)
+			return
+		}
+		inst.Imm = f["imm9"]
+		inst.WB = int(wb)
+		inst.SF = is64
+		xzrReplace(&inst.Rd)
+	}
+}
+
+// postLdrStrPrePostXZR LDRB/STRB/LDRH/STRH pre/post index
+func postLdrStrPrePostXZR(f map[string]int64, inst *vm.Instruction) {
+	wb := f["wb"]
+	if wb != 1 && wb != 3 {
+		inst.Op = int(UNSUPPORTED)
+		return
+	}
+	inst.Imm = f["imm9"]
+	inst.WB = int(wb)
+	xzrReplace(&inst.Rd)
+}
+
+// postUnsigned unsigned offset 后处理
+func postUnsigned(scale int64, sf bool) PostFunc {
+	return func(f map[string]int64, inst *vm.Instruction) {
+		inst.Imm = f["imm12"] * scale
+		inst.SF = sf
+		xzrReplace(&inst.Rd)
+	}
+}

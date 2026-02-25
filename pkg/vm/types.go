@@ -7,6 +7,12 @@ package vm
 // 以便将来扩展到新架构（x86, RISC-V）或新二进制格式（PE, Mach-O）。
 // ============================================================
 
+// REG_XZR ARM64 零寄存器标记值。
+// 在 ARM64 中 register 31 根据指令类型可以是 SP 或 XZR。
+// decoder 在解码后对 XZR 语境的 reg=31 替换为此值，
+// translator 的 mapReg 统一处理。
+const REG_XZR = -2
+
 // Instruction 通用指令表示（架构无关）
 type Instruction struct {
 	Raw    uint32

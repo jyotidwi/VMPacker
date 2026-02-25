@@ -117,6 +117,9 @@ func (t *Translator) trunc32(rd byte) {
 
 // mapReg ARM64寄存器 → VM寄存器
 func (t *Translator) mapReg(arm64Reg int) (byte, error) {
+	if arm64Reg == vm.REG_XZR {
+		return 16, nil // XZR → R16 (临时零寄存器)
+	}
 	if arm64Reg < 0 || arm64Reg > 31 {
 		return 0, fmt.Errorf("寄存器 X%d 超出 VM 范围", arm64Reg)
 	}
@@ -209,7 +212,7 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 	case SUB_IMM:
 		return 0, t.trAluImm(inst, vm.OpSubImm)
 	case ADDS_IMM, SUBS_IMM:
-		if inst.Rd == 31 {
+		if inst.Rd == vm.REG_XZR {
 			rn, err := t.mapReg(inst.Rn)
 			if err != nil {
 				return 0, err
@@ -219,9 +222,9 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 			return 0, nil
 		}
 		if op == ADDS_IMM {
-			return 0, t.trAluImm(inst, vm.OpAddImm)
+			return 0, t.trAluImmFlags(inst, vm.OpAddImm, true)
 		}
-		return 0, t.trAluImm(inst, vm.OpSubImm)
+		return 0, t.trAluImmFlags(inst, vm.OpSubImm, true)
 
 	case AND_IMM:
 		return 0, t.trAluImm(inst, vm.OpAndImm)
@@ -246,7 +249,7 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 	case AND_REG:
 		return 0, t.trAluReg(inst, vm.OpAnd)
 	case ORR_REG:
-		if inst.Rn == 31 {
+		if inst.Rn == vm.REG_XZR {
 			rd, err := t.mapReg(inst.Rd)
 			if err != nil {
 				return 0, err
@@ -273,7 +276,7 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 		return 0, t.trAluReg(inst, vm.OpRor)
 
 	case ADDS_REG, SUBS_REG:
-		if inst.Rd == 31 {
+		if inst.Rd == vm.REG_XZR {
 			rn, err := t.mapReg(inst.Rn)
 			if err != nil {
 				return 0, err
@@ -286,12 +289,12 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 			return 0, nil
 		}
 		if op == ADDS_REG {
-			return 0, t.trAluReg(inst, vm.OpAdd)
+			return 0, t.trAluRegFlags(inst, vm.OpAdd, true)
 		}
-		return 0, t.trAluReg(inst, vm.OpSub)
+		return 0, t.trAluRegFlags(inst, vm.OpSub, true)
 
 	case ANDS_REG:
-		if inst.Rd == 31 {
+		if inst.Rd == vm.REG_XZR {
 			rn, err := t.mapReg(inst.Rn)
 			if err != nil {
 				return 0, err

@@ -9,6 +9,10 @@ import (
 // ============================================================
 
 func (t *Translator) trAluImm(inst vm.Instruction, vmOp byte) error {
+	return t.trAluImmFlags(inst, vmOp, false)
+}
+
+func (t *Translator) trAluImmFlags(inst vm.Instruction, vmOp byte, setFlags bool) error {
 	rd, err := t.mapReg(inst.Rd)
 	if err != nil {
 		return err
@@ -19,6 +23,11 @@ func (t *Translator) trAluImm(inst vm.Instruction, vmOp byte) error {
 	}
 	t.emit(vmOp, rd, rn)
 	t.emitU32(uint32(inst.Imm))
+	if setFlags {
+		// ADDS/SUBS: 在 trunc32 之前比较，确保 N flag 正确
+		t.emit(vm.OpCmpImm, rd)
+		t.emitU32(0)
+	}
 	if !inst.SF {
 		t.trunc32(rd)
 	}
@@ -26,6 +35,22 @@ func (t *Translator) trAluImm(inst vm.Instruction, vmOp byte) error {
 }
 
 func (t *Translator) trAluReg(inst vm.Instruction, vmOp byte) error {
+	return t.trAluRegFlags(inst, vmOp, false)
+}
+
+func (t *Translator) trAluRegFlags(inst vm.Instruction, vmOp byte, setFlags bool) error {
+	// ARM64 shifted-register ALU: reg 31 = XZR (not SP)
+	// decoder 已标记为 REG_XZR, mapReg 映射到 R16
+	// 这里需要对 Rn/Rm 为 XZR 时先清零 R16/R15
+	if inst.Rn == vm.REG_XZR {
+		t.emit(vm.OpMovImm32, 16) // R16 = 0
+		t.emitU32(0)
+	}
+	if inst.Rm == vm.REG_XZR {
+		t.emit(vm.OpMovImm32, 15) // R15 = 0 (用不同寄存器避免 Rn==Rm==XZR 冲突)
+		t.emitU32(0)
+	}
+
 	rd, err := t.mapReg(inst.Rd)
 	if err != nil {
 		return err
@@ -39,6 +64,12 @@ func (t *Translator) trAluReg(inst vm.Instruction, vmOp byte) error {
 		return err
 	}
 
+	// Rn 和 Rm 同时为 XZR 时，mapReg 都返回 16
+	// 但 Rm 已经清零到 R15，所以需要修正
+	if inst.Rm == vm.REG_XZR {
+		rm = 15
+	}
+
 	if inst.Shift != 0 {
 		t.emit(vm.OpShlImm, 15, rm)
 		t.emitU32(uint32(inst.Shift))
@@ -46,9 +77,15 @@ func (t *Translator) trAluReg(inst vm.Instruction, vmOp byte) error {
 	} else {
 		t.emit(vmOp, rd, rn, rm)
 	}
+	if setFlags {
+		// ADDS/SUBS: 在 trunc32 之前比较，确保 N flag 正确
+		t.emit(vm.OpCmpImm, rd)
+		t.emitU32(0)
+	}
 	if !inst.SF {
 		t.trunc32(rd)
 	}
+	// Rd==XZR: 结果写入 R16，等价于丢弃
 	return nil
 }
 

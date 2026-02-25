@@ -1,0 +1,159 @@
+package arm64
+
+import "github.com/vmpacker/pkg/vm"
+
+// ============================================================
+// 数据处理（寄存器）模式表
+//
+// 覆盖: ADD/SUB/ADDS/SUBS(reg), AND/ORR/EOR/ANDS(reg), MVN,
+//       LSL/LSR/ASR/ROR(reg), MUL/MADD/MSUB, SDIV/UDIV,
+//       CSEL/CSINC/CSINV/CSNEG
+// ============================================================
+
+var dpRegPatterns = []InstrPattern{
+	// ---- Logical (shifted register) ----
+	// 编码: sf:opc:01010:shift:N:Rm:imm6:Rn:Rd
+	// bits[28:24] = 01010 → 组内用 opc+N 区分
+	{
+		Name: "AND_REG", Mask: 0x7F200000, Value: 0x0A000000, Op: AND_REG,
+		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postXZR3,
+	},
+	{
+		Name: "ORR_REG", Mask: 0x7F200000, Value: 0x2A000000, Op: ORR_REG,
+		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postXZR3,
+	},
+	{
+		// MVN = ORR(reg) with N=1, Rn=11111
+		Name: "MVN", Mask: 0x7F200000, Value: 0x2A200000, Op: MVN,
+		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postXZR3,
+	},
+	{
+		Name: "EOR_REG", Mask: 0x7F200000, Value: 0x4A000000, Op: EOR_REG,
+		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postXZR3,
+	},
+	{
+		Name: "ANDS_REG", Mask: 0x7F200000, Value: 0x6A000000, Op: ANDS_REG,
+		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postXZR3,
+	},
+
+	// ---- Add/Subtract (shifted register) ----
+	// 编码: sf:op:S:01011:shift:0:Rm:imm6:Rn:Rd
+	// bits[28:24] = 01011
+	{
+		Name: "ADD_REG", Mask: 0x7F200000, Value: 0x0B000000, Op: ADD_REG,
+		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postXZR3,
+	},
+	{
+		Name: "ADDS_REG", Mask: 0x7F200000, Value: 0x2B000000, Op: ADDS_REG,
+		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postXZR3,
+	},
+	{
+		Name: "SUB_REG", Mask: 0x7F200000, Value: 0x4B000000, Op: SUB_REG,
+		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postXZR3,
+	},
+	{
+		Name: "SUBS_REG", Mask: 0x7F200000, Value: 0x6B000000, Op: SUBS_REG,
+		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postXZR3,
+	},
+
+	// ---- Conditional select ----
+	// 编码: sf:op:S:11010:00:Rm:cond:o2:Rn:Rd
+	// bits[28:21] = 11010_00_0 (bit21=0 for condsel)
+	{
+		Name: "CSEL", Mask: 0x7FE00C00, Value: 0x1A800000, Op: CSEL,
+		Fields: []FieldDef{fSF, fRm16, {Name: "cond", Hi: 15, Lo: 12}, fRn, fRd},
+		Post:   postXZR3,
+	},
+	{
+		Name: "CSINC", Mask: 0x7FE00C00, Value: 0x1A800400, Op: CSINC,
+		Fields: []FieldDef{fSF, fRm16, {Name: "cond", Hi: 15, Lo: 12}, fRn, fRd},
+		Post:   postXZR3,
+	},
+	{
+		Name: "CSINV", Mask: 0x7FE00C00, Value: 0x5A800000, Op: CSINV,
+		Fields: []FieldDef{fSF, fRm16, {Name: "cond", Hi: 15, Lo: 12}, fRn, fRd},
+		Post:   postXZR3,
+	},
+	{
+		Name: "CSNEG", Mask: 0x7FE00C00, Value: 0x5A800400, Op: CSNEG,
+		Fields: []FieldDef{fSF, fRm16, {Name: "cond", Hi: 15, Lo: 12}, fRn, fRd},
+		Post:   postXZR3,
+	},
+
+	// ---- Data processing (2-source): DIV/SHIFT ----
+	// 编码: sf:0:S:11010110:Rm:opcode:Rn:Rd
+	// bits[28:21] = 11010_11_0 (bit21=1 for 2-source)
+	{
+		Name: "UDIV", Mask: 0x7FE0FC00, Value: 0x1AC00800, Op: UDIV,
+		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+	},
+	{
+		Name: "SDIV", Mask: 0x7FE0FC00, Value: 0x1AC00C00, Op: SDIV,
+		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+	},
+	{
+		Name: "LSL_REG", Mask: 0x7FE0FC00, Value: 0x1AC02000, Op: LSL_REG,
+		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+	},
+	{
+		Name: "LSR_REG", Mask: 0x7FE0FC00, Value: 0x1AC02400, Op: LSR_REG,
+		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+	},
+	{
+		Name: "ASR_REG", Mask: 0x7FE0FC00, Value: 0x1AC02800, Op: ASR_REG,
+		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+	},
+	{
+		Name: "ROR_REG", Mask: 0x7FE0FC00, Value: 0x1AC02C00, Op: ROR_REG,
+		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+	},
+
+	// ---- Data processing (3-source): MUL/MADD/MSUB ----
+	// 编码: sf:00:11011:000:Rm:o0:Ra:Rn:Rd
+	// MUL = MADD with Ra=11111
+	{
+		Name: "MUL", Mask: 0x7FE0FC00, Value: 0x1B007C00, Op: MUL,
+		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+		Post: func(f map[string]int64, inst *vm.Instruction) {
+			xzrReplace(&inst.Rd)
+			xzrReplace(&inst.Rn)
+			xzrReplace(&inst.Rm)
+		},
+	},
+	{
+		// MADD: o0=0, Ra≠11111 → 需要匹配 o0=0 但 Ra 任意
+		// 用更宽松的 mask 先匹配 MADD（MUL 的 mask 更严格，放在前面优先匹配）
+		Name: "MADD", Mask: 0x7FE08000, Value: 0x1B000000, Op: MADD,
+		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+		Post: func(f map[string]int64, inst *vm.Instruction) {
+			xzrReplace(&inst.Rd)
+			xzrReplace(&inst.Rn)
+			xzrReplace(&inst.Rm)
+		},
+	},
+	{
+		Name: "MSUB", Mask: 0x7FE08000, Value: 0x1B008000, Op: MSUB,
+		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+		Post: func(f map[string]int64, inst *vm.Instruction) {
+			xzrReplace(&inst.Rd)
+			xzrReplace(&inst.Rn)
+			xzrReplace(&inst.Rm)
+		},
+	},
+}
+
+// postXZR3 逻辑/算术/条件选择(reg): Rd/Rn/Rm=31 → XZR
+func postXZR3(f map[string]int64, inst *vm.Instruction) {
+	xzrReplace(&inst.Rd)
+	xzrReplace(&inst.Rn)
+	xzrReplace(&inst.Rm)
+}

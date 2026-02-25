@@ -11,6 +11,7 @@ import (
 // ============================================================
 
 func (t *Translator) trLoad(inst vm.Instruction) error {
+	// ARM64: Rd=REG_XZR 在 LDR 上下文 = XZR (丢弃结果, decoder 已标记)
 	rd, err := t.mapReg(inst.Rd)
 	if err != nil {
 		return err
@@ -71,9 +72,15 @@ func (t *Translator) trStore(inst vm.Instruction) error {
 	if err != nil {
 		return err
 	}
-	rd, err := t.mapReg(inst.Rd)
-	if err != nil {
-		return err
+
+	// ARM64: Rt=REG_XZR 在 STR 上下文 = XZR (零寄存器, decoder 已标记)
+	rd, err2 := t.mapReg(inst.Rd)
+	if err2 != nil {
+		return err2
+	}
+	if inst.Rd == vm.REG_XZR {
+		t.emit(vm.OpMovImm32, rd)
+		t.emitU32(0)
 	}
 
 	op := Op(inst.Op)

@@ -64,6 +64,7 @@ $(STUB_BIN): $(STUB_ELF) | $(BUILD_DIR)
 
 # ------ Go packer (embed vm_interp.bin) ------
 packer: $(STUB_BIN) | $(BUILD_DIR)
+	@powershell -Command "if (Test-Path '$(PACKER)') { Remove-Item -Force '$(PACKER)' -ErrorAction SilentlyContinue }"
 	$(GO) build -o $(PACKER) ./$(CMD_DIR)/
 	@echo "[+] packer: $(PACKER)"
 
