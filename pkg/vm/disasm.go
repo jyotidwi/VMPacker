@@ -65,6 +65,8 @@ var opTable = map[byte]opInfo{
 	OpJle: {"JLE", 5},
 	OpJb:  {"JB", 5},
 	OpJae: {"JAE", 5},
+	OpJbe: {"JBE", 5},
+	OpJa:  {"JA", 5},
 
 	OpPush: {"PUSH", 2}, // op + rx
 	OpPop:  {"POP", 2},
@@ -158,7 +160,7 @@ func DisasmOne(code []byte, pc int) (string, int) {
 		imm := binary.LittleEndian.Uint32(code[pc+2:])
 		return fmt.Sprintf("%04X: CMP R%d, 0x%X", pc, r, imm), 6
 
-	case OpJmp, OpJe, OpJne, OpJl, OpJge, OpJgt, OpJle, OpJb, OpJae:
+	case OpJmp, OpJe, OpJne, OpJl, OpJge, OpJgt, OpJle, OpJb, OpJae, OpJbe, OpJa:
 		target := binary.LittleEndian.Uint32(code[pc+1:])
 		return fmt.Sprintf("%04X: %s 0x%04X", pc, info.Name, target), 5
 

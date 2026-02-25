@@ -66,6 +66,8 @@ const (
 	// 无符号比较跳转
 	OpJb  byte = 0x52 // JB  (无符号小于, CF)
 	OpJae byte = 0x64 // JAE (无符号大于等于)
+	OpJbe byte = 0x53 // JBE (无符号小于等于, CF||ZF)  B.LS
+	OpJa  byte = 0x65 // JA  (无符号大于, !CF&&!ZF)    B.HI
 
 	// 栈操作
 	OpPush byte = 0x63 // PUSH Rx             2B

@@ -10,7 +10,6 @@
 #include "../vm_decode.h"
 #include "../vm_types.h"
 
-
 /* B target (无条件跳转) */
 static inline u32 h_jmp(vm_ctx_t *vm) {
   vm->pc = rd32(&vm->bc[vm->pc + 1]);
@@ -70,6 +69,20 @@ static inline u32 h_jb(vm_ctx_t *vm) {
 static inline u32 h_jae(vm_ctx_t *vm) {
   u32 t = rd32(&vm->bc[vm->pc + 1]);
   vm->pc = (!(vm->FL & FL_CARRY)) ? t : vm->pc + 5;
+  return 0;
+}
+
+/* B.LS target (CF||ZF, 无符号小于等于) */
+static inline u32 h_jbe(vm_ctx_t *vm) {
+  u32 t = rd32(&vm->bc[vm->pc + 1]);
+  vm->pc = (vm->FL & (FL_CARRY | FL_ZERO)) ? t : vm->pc + 5;
+  return 0;
+}
+
+/* B.HI target (!CF&&!ZF, 无符号大于) */
+static inline u32 h_ja(vm_ctx_t *vm) {
+  u32 t = rd32(&vm->bc[vm->pc + 1]);
+  vm->pc = (!(vm->FL & (FL_CARRY | FL_ZERO))) ? t : vm->pc + 5;
   return 0;
 }
 

@@ -205,6 +205,8 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
   dtab[OP_JLE] = &&L_JLE;
   dtab[OP_JB] = &&L_JB;
   dtab[OP_JAE] = &&L_JAE;
+  dtab[OP_JBE] = &&L_JBE;
+  dtab[OP_JA] = &&L_JA;
   /* 栈操作 */
   dtab[OP_PUSH] = &&L_PUSH;
   dtab[OP_POP] = &&L_POP;
@@ -345,6 +347,12 @@ L_JB:
   NEXT0();
 L_JAE:
   h_jae(&vm);
+  NEXT0();
+L_JBE:
+  h_jbe(&vm);
+  NEXT0();
+L_JA:
+  h_ja(&vm);
   NEXT0();
 
 /* ---- 栈操作 ---- */

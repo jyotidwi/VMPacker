@@ -51,9 +51,9 @@ func (t *Translator) trBranchCond(inst vm.Instruction) error {
 	case COND_CC:
 		vmOp = vm.OpJb
 	case COND_HI:
-		return fmt.Errorf("B.HI (unsigned greater) VM flag 语义不兼容，无法保证正确性")
+		vmOp = vm.OpJa
 	case COND_LS:
-		return fmt.Errorf("B.LS (unsigned less-equal) VM flag 语义不兼容，无法保证正确性")
+		vmOp = vm.OpJbe
 	case COND_MI:
 		vmOp = vm.OpJl // MI: N==1 → FL_SIGN set
 	case COND_PL:
@@ -164,9 +164,9 @@ func (t *Translator) trCSEL(inst vm.Instruction) error {
 	case COND_CC:
 		vmOp = vm.OpJb
 	case COND_HI:
-		return fmt.Errorf("CSEL B.HI (unsigned greater) VM flag 语义不兼容")
+		vmOp = vm.OpJa
 	case COND_LS:
-		return fmt.Errorf("CSEL B.LS (unsigned less-equal) VM flag 语义不兼容")
+		vmOp = vm.OpJbe
 	case COND_MI:
 		vmOp = vm.OpJl // MI: N==1 → FL_SIGN set
 	case COND_PL:

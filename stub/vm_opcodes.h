@@ -69,6 +69,8 @@
 #define OP_JLE 0x47 /* B.LE (ZF || SF)               5B */
 #define OP_JB 0x52  /* B.CC (CF=1, unsigned <)       5B */
 #define OP_JAE 0x64 /* B.CS (CF=0, unsigned >=)      5B */
+#define OP_JBE 0x53 /* B.LS (CF||ZF, unsigned <=)    5B */
+#define OP_JA 0x65  /* B.HI (!CF&&!ZF, unsigned >)   5B */
 
 /* ---- 栈操作 ---- */
 #define OP_PUSH 0x63 /* STR  Xn, [SP, #-8]!           2B: [op][n] */
