@@ -73,6 +73,8 @@ const (
 
 	// 特殊
 	OpCallNative byte = 0xAB // 调用原生函数地址    9B: [op][imm64] (BL到绝对地址)
+	OpCallReg    byte = 0xBC // BLR Xn 寄存器间接调用 2B: [op][rn]
+	OpBrReg      byte = 0xCD // BR  Xn 寄存器间接跳转 2B: [op][rn]
 	OpRet        byte = 0xEE // RET Rx             2B
 	OpHalt       byte = 0x00 // 停机               1B
 

@@ -97,6 +97,7 @@ const (
 	EXTR
 	LD1_16B
 	ST1_16B
+	ANDS_IMM
 	UNSUPPORTED
 )
 
@@ -243,6 +244,7 @@ func OpName(op Op) string {
 		ADR: "ADR", ADRP: "ADRP", NOP: "NOP", SVC: "SVC",
 		EXTR:    "EXTR",
 		LD1_16B: "LD1{16B}", ST1_16B: "ST1{16B}",
+		ANDS_IMM: "ANDS(imm)",
 	}
 	if n, ok := names[op]; ok {
 		return n

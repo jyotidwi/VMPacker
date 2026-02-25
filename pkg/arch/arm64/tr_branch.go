@@ -51,9 +51,9 @@ func (t *Translator) trBranchCond(inst vm.Instruction) error {
 	case COND_CC:
 		vmOp = vm.OpJb
 	case COND_HI:
-		vmOp = vm.OpJgt
+		return fmt.Errorf("B.HI (unsigned greater) VM flag 语义不兼容，无法保证正确性")
 	case COND_LS:
-		vmOp = vm.OpJle
+		return fmt.Errorf("B.LS (unsigned less-equal) VM flag 语义不兼容，无法保证正确性")
 	case COND_MI:
 		vmOp = vm.OpJl // MI: N==1 → FL_SIGN set
 	case COND_PL:
@@ -95,10 +95,28 @@ func (t *Translator) trCBZ(inst vm.Instruction, isZero bool) error {
 }
 
 func (t *Translator) trBL(inst vm.Instruction) error {
-	target := t.funcAddr + uint64(inst.Offset) + uint64(inst.Imm)
+	target := uint64(int64(t.funcAddr) + int64(inst.Offset) + inst.Imm)
 
 	t.emit(vm.OpCallNative)
 	t.emitU64(target)
+	return nil
+}
+
+func (t *Translator) trBLR(inst vm.Instruction) error {
+	rn, err := t.mapReg(inst.Rn)
+	if err != nil {
+		return err
+	}
+	t.emit(vm.OpCallReg, rn)
+	return nil
+}
+
+func (t *Translator) trBR(inst vm.Instruction) error {
+	rn, err := t.mapReg(inst.Rn)
+	if err != nil {
+		return err
+	}
+	t.emit(vm.OpBrReg, rn)
 	return nil
 }
 
@@ -146,9 +164,9 @@ func (t *Translator) trCSEL(inst vm.Instruction) error {
 	case COND_CC:
 		vmOp = vm.OpJb
 	case COND_HI:
-		vmOp = vm.OpJgt
+		return fmt.Errorf("CSEL B.HI (unsigned greater) VM flag 语义不兼容")
 	case COND_LS:
-		vmOp = vm.OpJle
+		return fmt.Errorf("CSEL B.LS (unsigned less-equal) VM flag 语义不兼容")
 	case COND_MI:
 		vmOp = vm.OpJl // MI: N==1 → FL_SIGN set
 	case COND_PL:

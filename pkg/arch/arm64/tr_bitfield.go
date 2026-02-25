@@ -49,7 +49,13 @@ func (t *Translator) trUBFM(inst vm.Instruction) error {
 			t.emit(vm.OpAndImm, rd, rd)
 			t.emitU32(mask)
 		} else {
-			return fmt.Errorf("复杂 UBFM (immr=%d, imms=%d) 暂不支持", immr, imms)
+			// UBFIZ: (Rn & mask) << shift
+			shift := regSize - immr
+			mask := uint32((1 << width) - 1)
+			t.emit(vm.OpAndImm, rd, rn)
+			t.emitU32(mask)
+			t.emit(vm.OpShlImm, rd, rd)
+			t.emitU32(shift)
 		}
 	}
 	if !inst.SF {

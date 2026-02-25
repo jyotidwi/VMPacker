@@ -72,19 +72,53 @@ var ldstPatterns = []InstrPattern{
 	},
 	{
 		Name: "LDR_REG_32", Mask: 0xFFE00C00, Value: 0xB8600800, Op: LDR_REG,
-		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+		Fields: []FieldDef{fRm16, fRn, fRd},
+		Post:   func(_ map[string]int64, inst *vm.Instruction) { inst.SF = false },
 	},
 	{
 		Name: "STR_REG_32", Mask: 0xFFE00C00, Value: 0xB8200800, Op: STR_REG,
-		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+		Fields: []FieldDef{fRm16, fRn, fRd},
+		Post:   func(_ map[string]int64, inst *vm.Instruction) { inst.SF = false },
 	},
 	{
 		Name: "LDR_REG_64", Mask: 0xFFE00C00, Value: 0xF8600800, Op: LDR_REG,
-		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+		Fields: []FieldDef{fRm16, fRn, fRd},
+		Post:   func(_ map[string]int64, inst *vm.Instruction) { inst.SF = true },
 	},
 	{
 		Name: "STR_REG_64", Mask: 0xFFE00C00, Value: 0xF8200800, Op: STR_REG,
-		Fields: []FieldDef{fSF, fRm16, fRn, fRd},
+		Fields: []FieldDef{fRm16, fRn, fRd},
+		Post:   func(_ map[string]int64, inst *vm.Instruction) { inst.SF = true },
+	},
+
+	// ================================================================
+	// Load/Store register (unscaled immediate) LDUR/STUR
+	// 编码: size:111:V:00:opc:0:imm9:00:Rn:Rt  (bits[11:10]=00)
+	// 复用 LDR_IMM/STR_IMM Op，offset 不缩放
+	// ================================================================
+	// LDUR 64-bit
+	{
+		Name: "LDUR_64", Mask: 0xFFE00C00, Value: 0xF8400000, Op: LDR_IMM,
+		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, fRn, fRd},
+		Post:   postUnscaled(true),
+	},
+	// STUR 64-bit
+	{
+		Name: "STUR_64", Mask: 0xFFE00C00, Value: 0xF8000000, Op: STR_IMM,
+		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, fRn, fRd},
+		Post:   postUnscaled(true),
+	},
+	// LDUR 32-bit
+	{
+		Name: "LDUR_32", Mask: 0xFFE00C00, Value: 0xB8400000, Op: LDR_IMM,
+		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, fRn, fRd},
+		Post:   postUnscaled(false),
+	},
+	// STUR 32-bit
+	{
+		Name: "STUR_32", Mask: 0xFFE00C00, Value: 0xB8000000, Op: STR_IMM,
+		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, fRn, fRd},
+		Post:   postUnscaled(false),
 	},
 
 	// ================================================================
@@ -229,8 +263,9 @@ func postPair(f map[string]int64, inst *vm.Instruction) {
 		return
 	}
 	inst.WB = int(wb)
-	// sf=bit31 直接决定缩放：不存在 opc&0x2 歧义
-	if f["sf"] != 0 {
+	// sf=bit31: 1→64-bit (X regs), 0→32-bit (W regs)
+	inst.SF = (f["sf"] != 0)
+	if inst.SF {
 		inst.Imm = f["imm7"] * 8
 	} else {
 		inst.Imm = f["imm7"] * 4
@@ -278,6 +313,15 @@ func postLdrStrPrePostXZR(f map[string]int64, inst *vm.Instruction) {
 	inst.Imm = f["imm9"]
 	inst.WB = int(wb)
 	xzrReplace(&inst.Rd)
+}
+
+// postUnscaled LDUR/STUR 无缩放偏移后处理: imm9 直接使用，不缩放
+func postUnscaled(sf bool) PostFunc {
+	return func(f map[string]int64, inst *vm.Instruction) {
+		inst.Imm = f["imm9"]
+		inst.SF = sf
+		xzrReplace(&inst.Rd)
+	}
 }
 
 // postUnsigned unsigned offset 后处理

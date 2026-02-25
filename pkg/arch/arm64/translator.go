@@ -190,6 +190,18 @@ func (t *Translator) Translate(instructions []vm.Instruction) (*TranslateResult,
 		binary.LittleEndian.PutUint32(t.code[fix.vmOffset:], uint32(target))
 	}
 
+	// ---- 追加 BR 间接跳转映射表 (trailer) ----
+	// 格式: [entries...][map_count:u32][func_addr:u64][func_size:u32]
+	// entry: [arm64_off:u32][vm_off:u32]
+	mapCount := uint32(len(t.labels))
+	for arm64Off, vmOff := range t.labels {
+		t.emitU32(uint32(arm64Off))
+		t.emitU32(uint32(vmOff))
+	}
+	t.emitU32(mapCount)
+	t.emitU64(t.funcAddr)
+	t.emitU32(uint32(t.funcSize))
+
 	result.Bytecode = t.code
 	result.Unsupported = t.unsupported
 	return result, nil
@@ -228,6 +240,20 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 
 	case AND_IMM:
 		return 0, t.trAluImm(inst, vm.OpAndImm)
+	case ANDS_IMM:
+		if inst.Rd == vm.REG_XZR {
+			// TST Xn, #imm = ANDS XZR, Xn, #imm
+			rn, err := t.mapReg(inst.Rn)
+			if err != nil {
+				return 0, err
+			}
+			t.emit(vm.OpAndImm, 15, rn)
+			t.emitU32(uint32(inst.Imm))
+			t.emit(vm.OpCmpImm, 15)
+			t.emitU32(0)
+			return 0, nil
+		}
+		return 0, t.trAluImmFlags(inst, vm.OpAndImm, true)
 	case ORR_IMM:
 		return 0, t.trAluImm(inst, vm.OpOrImm)
 	case EOR_IMM:
@@ -341,6 +367,10 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 		return 0, t.trCBZ(inst, false)
 	case BL:
 		return 0, t.trBL(inst)
+	case BLR:
+		return 0, t.trBLR(inst)
+	case BR:
+		return 0, t.trBR(inst)
 	case RET:
 		t.emit(vm.OpRet, 0)
 		return 0, nil
@@ -354,12 +384,16 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 		return 0, t.trCSEL(inst)
 	case CSNEG:
 		return 0, t.trCSEL(inst)
-	case MADD, MSUB:
-		return 0, t.trAluReg(inst, vm.OpMul)
+	case MADD:
+		return 0, fmt.Errorf("MADD (Ra≠XZR) 暂不支持，无法保证正确性")
+	case MSUB:
+		return 0, fmt.Errorf("MSUB (Ra≠XZR) 暂不支持，无法保证正确性")
 
-	// ========== 寄存器偏移加载 ==========
+	// ========== 寄存器偏移加载/存储 ==========
 	case LDR_REG, LDRB_REG:
 		return 0, t.trLoadReg(inst)
+	case STR_REG, STRB_REG:
+		return 0, t.trStoreReg(inst)
 
 	// ========== ADRP ==========
 	case ADRP:

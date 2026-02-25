@@ -12,13 +12,14 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long u64;
 typedef long long i64;
+typedef short i16;
 
 /* ---- VM 配置常量 ---- */
-#define VM_REG_COUNT 32      /* X0-X30, X31=SP */
-#define VM_STACK_SIZE 32     /* PUSH/POP 操作栈深度 */
-#define VM_MEM_STACK 512     /* 内存栈 (SP 指向的空间) */
-#define VM_BYTECODE_MAX 4096 /* 最大字节码长度 */
-#define VM_SIMD_BUF 64       /* SIMD 临时缓冲大小 */
+#define VM_REG_COUNT 32       /* X0-X30, X31=SP */
+#define VM_STACK_SIZE 32      /* PUSH/POP 操作栈深度 */
+#define VM_MEM_STACK 4096     /* 内存栈 (SP 指向的空间, 4KB) */
+#define VM_BYTECODE_MAX 65536 /* 最大字节码长度 (64KB, 含映射表) */
+#define VM_SIMD_BUF 64        /* SIMD 临时缓冲大小 */
 
 /* ---- 标志位 (NZCV 简化) ---- */
 #define FL_ZERO 1  /* Z: 结果为零 */
@@ -27,6 +28,12 @@ typedef long long i64;
 
 /* ---- 原生函数指针类型 ---- */
 typedef u64 (*native_fn_t)(u64, u64, u64, u64, u64, u64, u64, u64);
+
+/* ---- BR 间接跳转映射表条目 ---- */
+typedef struct {
+  u32 arm64_off; /* ARM64 函数内偏移 */
+  u32 vm_off;    /* 对应的 VM 字节码偏移 */
+} addr_map_entry_t;
 
 /* ---- VM CPU 上下文 ---- */
 typedef struct {
@@ -52,20 +59,26 @@ typedef struct {
 
   /* SIMD 临时缓冲 */
   u8 vtmp[VM_SIMD_BUF];
+
+  /* BR 间接跳转支持 */
+  u64 func_addr;              /* 被保护函数的原始起始地址 */
+  u32 func_size;              /* 被保护函数的大小 */
+  addr_map_entry_t *addr_map; /* ARM64偏移→VM偏移 映射表 */
+  u32 map_count;              /* 映射表条目数 */
 } vm_ctx_t;
 
 /* ---- VM 初始化 ---- */
-static inline void vm_ctx_init(vm_ctx_t *vm, u64 arg0, u64 arg1, u8 *bytecode,
-                               u32 len, u64 caller_fp, u64 caller_lr) {
+static inline void vm_ctx_init(vm_ctx_t *vm, u64 *args, u8 *bytecode, u32 len) {
   /* 清零所有寄存器 */
   for (int i = 0; i < VM_REG_COUNT; i++)
     vm->R[i] = 0;
 
-  /* 设置参数寄存器 */
-  vm->R[0] = arg0;       /* X0 = 第一个参数 */
-  vm->R[1] = arg1;       /* X1 = 第二个参数 */
-  vm->R[29] = caller_fp; /* X29 = FP */
-  vm->R[30] = caller_lr; /* X30 = LR */
+  /* 从 args 指针恢复参数寄存器 X0-X7 */
+  for (int i = 0; i < 8; i++)
+    vm->R[i] = args[i];
+
+  vm->R[29] = args[8]; /* X29 = caller FP */
+  vm->R[30] = args[9]; /* X30 = caller LR */
 
   /* SP 指向内存栈顶 */
   vm->R[31] = (u64)&vm->vm_stk[VM_MEM_STACK];
@@ -78,6 +91,12 @@ static inline void vm_ctx_init(vm_ctx_t *vm, u64 arg0, u64 arg1, u8 *bytecode,
   vm->FL = 0;
   vm->pc = 0;
   vm->sp = 0;
+
+  /* BR 间接跳转映射表：默认无 */
+  vm->func_addr = 0;
+  vm->func_size = 0;
+  vm->addr_map = 0;
+  vm->map_count = 0;
 }
 
 #endif /* VM_TYPES_H */

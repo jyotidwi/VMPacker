@@ -70,6 +70,8 @@ var opTable = map[byte]opInfo{
 	OpPop:  {"POP", 2},
 
 	OpCallNative: {"CALL_NATIVE", 9}, // op + imm64
+	OpCallReg:    {"CALL_REG", 2},    // op + rn (BLR)
+	OpBrReg:      {"BR_REG", 2},      // op + rn (BR)
 	OpRet:        {"RET", 2},         // op + rx
 	OpHalt:       {"HALT", 1},
 
@@ -168,6 +170,12 @@ func DisasmOne(code []byte, pc int) (string, int) {
 	case OpCallNative:
 		target := binary.LittleEndian.Uint64(code[pc+1:])
 		return fmt.Sprintf("%04X: CALL 0x%X", pc, target), 9
+
+	case OpCallReg:
+		return fmt.Sprintf("%04X: BLR R%d", pc, code[pc+1]), 2
+
+	case OpBrReg:
+		return fmt.Sprintf("%04X: BR R%d", pc, code[pc+1]), 2
 
 	case OpRet:
 		return fmt.Sprintf("%04X: RET R%d", pc, code[pc+1]), 2

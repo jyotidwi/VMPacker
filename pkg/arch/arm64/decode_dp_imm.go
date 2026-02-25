@@ -81,8 +81,8 @@ var dpImmPatterns = []InstrPattern{
 		Post:   postBitmaskImm,
 	},
 	{
-		// ANDS(imm) opc=11 → 当前实现映射到 AND_IMM
-		Name: "ANDS_IMM", Mask: 0x7F800000, Value: 0x72000000, Op: AND_IMM,
+		// ANDS(imm) opc=11 → 需要设置 flags (TST = ANDS XZR, Xn, #imm)
+		Name: "ANDS_IMM", Mask: 0x7F800000, Value: 0x72000000, Op: ANDS_IMM,
 		Fields: []FieldDef{fSF, {Name: "N", Hi: 22, Lo: 22}, {Name: "immr", Hi: 21, Lo: 16}, {Name: "imms", Hi: 15, Lo: 10}, fRn, fRd},
 		Post:   postBitmaskImm,
 	},

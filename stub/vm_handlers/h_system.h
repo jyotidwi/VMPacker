@@ -9,7 +9,6 @@
 #include "../vm_decode.h"
 #include "../vm_types.h"
 
-
 /* NOP  [1B] */
 static inline u32 h_nop(vm_ctx_t *vm) {
   (void)vm;
@@ -23,6 +22,54 @@ static inline u32 h_call_nat(vm_ctx_t *vm) {
   vm->R[0] = fn(vm->R[0], vm->R[1], vm->R[2], vm->R[3], vm->R[4], vm->R[5],
                 vm->R[6], vm->R[7]);
   return 9;
+}
+
+/* CALL_REG: BLR Xn (寄存器间接调用) [2B: op | rn] */
+static inline u32 h_call_reg(vm_ctx_t *vm) {
+  u8 rn = vm->bc[vm->pc + 1];
+  u64 addr = vm->R[rn & 31];
+  native_fn_t fn = (native_fn_t)addr;
+  vm->R[0] = fn(vm->R[0], vm->R[1], vm->R[2], vm->R[3], vm->R[4], vm->R[5],
+                vm->R[6], vm->R[7]);
+  return 2;
+}
+
+/* BR_REG: BR Xn (寄存器间接跳转) [2B: op | rn]
+ * 两种情况:
+ *   1) 目标在被保护函数内 → computed goto, 查映射表做 VM 内部跳转
+ *   2) 目标在函数外 → 尾调用, 当 native call 处理
+ * 返回 0 表示已直接设置 vm->pc (内部跳转) */
+static inline u32 h_br_reg(vm_ctx_t *vm) {
+  u8 rn = vm->bc[vm->pc + 1];
+  u64 addr = vm->R[rn & 31];
+
+  /* 检查目标是否在被保护函数的地址范围内 */
+  if (vm->map_count > 0 && addr >= vm->func_addr &&
+      addr < vm->func_addr + vm->func_size) {
+    u32 arm64_off = (u32)(addr - vm->func_addr);
+    /* 二分查找 (addr_map 已按 arm64_off 升序排序) */
+    u32 lo = 0, hi = vm->map_count;
+    while (lo < hi) {
+      u32 mid = lo + ((hi - lo) >> 1);
+      u32 mid_off = vm->addr_map[mid].arm64_off;
+      if (mid_off < arm64_off)
+        lo = mid + 1;
+      else if (mid_off > arm64_off)
+        hi = mid;
+      else {
+        vm->pc = vm->addr_map[mid].vm_off;
+        return 0; /* 已设置 pc, 不再 advance */
+      }
+    }
+    /* 未找到映射 */
+    return 2; /* skip, 继续 */
+  }
+
+  /* 外部尾调用 → native call */
+  native_fn_t fn = (native_fn_t)addr;
+  vm->R[0] = fn(vm->R[0], vm->R[1], vm->R[2], vm->R[3], vm->R[4], vm->R[5],
+                vm->R[6], vm->R[7]);
+  return 2;
 }
 
 /* VLD16: LD1 {Vn.16B}, [Xn]  [3B: op | rn | len] */

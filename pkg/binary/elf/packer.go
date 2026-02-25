@@ -317,7 +317,7 @@ func (p *Packer) Process() error {
 		// debug: 生成对照文件
 		if p.debug {
 			debugPath := p.outputPath + ".debug.txt"
-			df, derr := os.OpenFile(debugPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+			df, derr := os.OpenFile(debugPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 			if derr != nil {
 				fmt.Printf("    [!] debug file create failed: %v\n", derr)
 			} else {
@@ -434,9 +434,16 @@ func (p *Packer) stripSections() {
 func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 	ehdr := readEhdr64(p.data)
 
-	// 1. 构造 payload: [interpBlob][bc0][pad][bc1][pad][...]
-	payload := make([]byte, 0, len(p.interpBlob)+1024)
-	payload = append(payload, p.interpBlob...)
+	// 从 blob 前 8 字节读取 vm_entry 偏移（由 Makefile 自动注入）
+	if len(p.interpBlob) < 8 {
+		return fmt.Errorf("interp blob too small: %d bytes", len(p.interpBlob))
+	}
+	entryOff := binary.LittleEndian.Uint64(p.interpBlob[:8])
+	interpCode := p.interpBlob[8:] // 纯代码部分（去掉 8 字节头）
+
+	// 1. 构造 payload: [interpCode][bc0][pad][bc1][pad][...]
+	payload := make([]byte, 0, len(interpCode)+1024)
+	payload = append(payload, interpCode...)
 	for len(payload)%4 != 0 {
 		payload = append(payload, 0x00)
 	}
@@ -468,7 +475,7 @@ func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 
 	p.data = append(p.data, payload...)
 
-	interpVA := payloadVA + 8
+	interpVA := payloadVA + entryOff // vm_entry 偏移由 Makefile 自动注入到 blob 头部
 
 	fmt.Printf("    Payload at file offset: 0x%X, VA: 0x%X, size: %d\n",
 		payloadFileOff, payloadVA, len(payload))

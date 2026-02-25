@@ -71,6 +71,9 @@ func (t *Translator) trAluRegFlags(inst vm.Instruction, vmOp byte, setFlags bool
 	}
 
 	if inst.Shift != 0 {
+		// 注意：当前假设 shift type = LSL，decoder 未提取 shift type
+		// 如有 ASR/LSR/ROR shifted register 会静默错误
+		// 已在 decode_dp_reg.go Post 函数中添加 guard
 		t.emit(vm.OpShlImm, 15, rm)
 		t.emitU32(uint32(inst.Shift))
 		t.emit(vmOp, rd, rn, 15)
@@ -114,10 +117,20 @@ func (t *Translator) trMovK(inst vm.Instruction) error {
 	val := uint64(inst.Imm) << shift
 	mask := uint64(0xFFFF) << shift
 
-	t.emit(vm.OpAndImm, rd, rd)
-	t.emitU32(uint32(^mask & 0xFFFFFFFF))
-	t.emit(vm.OpOrImm, rd, rd)
-	t.emitU32(uint32(val & 0xFFFFFFFF))
+	// 使用 64-bit mask 确保不破坏其他位（修复 LSL#32/48 截断）
+	t.emit(vm.OpMovImm, 15)
+	t.emitU64(^mask)
+	t.emit(vm.OpAnd, rd, rd, 15)
+
+	// OR in the new value
+	if val <= 0xFFFFFFFF {
+		t.emit(vm.OpOrImm, rd, rd)
+		t.emitU32(uint32(val))
+	} else {
+		t.emit(vm.OpMovImm, 15)
+		t.emitU64(val)
+		t.emit(vm.OpOr, rd, rd, 15)
+	}
 	return nil
 }
 

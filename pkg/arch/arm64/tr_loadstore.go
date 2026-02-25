@@ -165,10 +165,14 @@ func (t *Translator) trSTP(inst vm.Instruction) error {
 		t.code = append(t.code, b...)
 	} else {
 		b := make([]byte, 2)
-		binary.LittleEndian.PutUint16(b, uint16(inst.Imm))
+		storeImm := inst.Imm
+		if inst.WB == 1 {
+			storeImm = 0 // post-index: store to [Rn+0], writeback later
+		}
+		binary.LittleEndian.PutUint16(b, uint16(storeImm))
 		t.emit(vmOp, rn, rt1)
 		t.code = append(t.code, b...)
-		binary.LittleEndian.PutUint16(b, uint16(inst.Imm+stride))
+		binary.LittleEndian.PutUint16(b, uint16(storeImm+stride))
 		t.emit(vmOp, rn, rt2)
 		t.code = append(t.code, b...)
 		if inst.WB == 1 {
@@ -223,10 +227,14 @@ func (t *Translator) trLDP(inst vm.Instruction) error {
 		t.code = append(t.code, b...)
 	} else {
 		b := make([]byte, 2)
-		binary.LittleEndian.PutUint16(b, uint16(inst.Imm))
+		loadImm := inst.Imm
+		if inst.WB == 1 {
+			loadImm = 0 // post-index: load from [Rn+0], writeback later
+		}
+		binary.LittleEndian.PutUint16(b, uint16(loadImm))
 		t.emit(vmOp, rt1, rn)
 		t.code = append(t.code, b...)
-		binary.LittleEndian.PutUint16(b, uint16(inst.Imm+stride))
+		binary.LittleEndian.PutUint16(b, uint16(loadImm+stride))
 		t.emit(vmOp, rt2, rn)
 		t.code = append(t.code, b...)
 		if inst.WB == 1 {
@@ -288,6 +296,57 @@ func (t *Translator) trLoadReg(inst vm.Instruction) error {
 	}
 
 	t.emit(vmOp, rd, tmp)
+	b := make([]byte, 2)
+	binary.LittleEndian.PutUint16(b, 0)
+	t.code = append(t.code, b...)
+	return nil
+}
+
+func (t *Translator) trStoreReg(inst vm.Instruction) error {
+	rn, err := t.mapReg(inst.Rn)
+	if err != nil {
+		return err
+	}
+	rd, err := t.mapReg(inst.Rd) // Rt (source register for store)
+	if err != nil {
+		return err
+	}
+	rm, err := t.mapReg(inst.Rm)
+	if err != nil {
+		return err
+	}
+
+	option := (inst.Raw >> 13) & 7
+	s := (inst.Raw >> 12) & 1
+	size := (inst.Raw >> 30) & 3
+
+	shift := uint32(0)
+	_ = option
+	if s == 1 {
+		shift = size
+	}
+
+	tmp := byte(15)
+	if shift > 0 {
+		t.emit(vm.OpShlImm, tmp, rm)
+		t.emitU32(shift)
+		t.emit(vm.OpAdd, tmp, rn, tmp)
+	} else {
+		t.emit(vm.OpAdd, tmp, rn, rm)
+	}
+
+	op := Op(inst.Op)
+	var vmOp byte
+	switch {
+	case op == STRB_REG:
+		vmOp = vm.OpStore8
+	case inst.SF:
+		vmOp = vm.OpStore64
+	default:
+		vmOp = vm.OpStore32
+	}
+
+	t.emit(vmOp, tmp, rd)
 	b := make([]byte, 2)
 	binary.LittleEndian.PutUint16(b, 0)
 	t.code = append(t.code, b...)

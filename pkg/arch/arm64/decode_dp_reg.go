@@ -16,29 +16,29 @@ var dpRegPatterns = []InstrPattern{
 	// bits[28:24] = 01010 → 组内用 opc+N 区分
 	{
 		Name: "AND_REG", Mask: 0x7F200000, Value: 0x0A000000, Op: AND_REG,
-		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
-		Post:   postXZR3,
+		Fields: []FieldDef{fSF, {Name: "shtype", Hi: 23, Lo: 22}, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postShiftedXZR3,
 	},
 	{
 		Name: "ORR_REG", Mask: 0x7F200000, Value: 0x2A000000, Op: ORR_REG,
-		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
-		Post:   postXZR3,
+		Fields: []FieldDef{fSF, {Name: "shtype", Hi: 23, Lo: 22}, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postShiftedXZR3,
 	},
 	{
 		// MVN = ORR(reg) with N=1, Rn=11111
 		Name: "MVN", Mask: 0x7F200000, Value: 0x2A200000, Op: MVN,
-		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
-		Post:   postXZR3,
+		Fields: []FieldDef{fSF, {Name: "shtype", Hi: 23, Lo: 22}, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postShiftedXZR3,
 	},
 	{
 		Name: "EOR_REG", Mask: 0x7F200000, Value: 0x4A000000, Op: EOR_REG,
-		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
-		Post:   postXZR3,
+		Fields: []FieldDef{fSF, {Name: "shtype", Hi: 23, Lo: 22}, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postShiftedXZR3,
 	},
 	{
 		Name: "ANDS_REG", Mask: 0x7F200000, Value: 0x6A000000, Op: ANDS_REG,
-		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
-		Post:   postXZR3,
+		Fields: []FieldDef{fSF, {Name: "shtype", Hi: 23, Lo: 22}, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postShiftedXZR3,
 	},
 
 	// ---- Add/Subtract (shifted register) ----
@@ -46,23 +46,23 @@ var dpRegPatterns = []InstrPattern{
 	// bits[28:24] = 01011
 	{
 		Name: "ADD_REG", Mask: 0x7F200000, Value: 0x0B000000, Op: ADD_REG,
-		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
-		Post:   postXZR3,
+		Fields: []FieldDef{fSF, {Name: "shtype", Hi: 23, Lo: 22}, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postShiftedXZR3,
 	},
 	{
 		Name: "ADDS_REG", Mask: 0x7F200000, Value: 0x2B000000, Op: ADDS_REG,
-		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
-		Post:   postXZR3,
+		Fields: []FieldDef{fSF, {Name: "shtype", Hi: 23, Lo: 22}, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postShiftedXZR3,
 	},
 	{
 		Name: "SUB_REG", Mask: 0x7F200000, Value: 0x4B000000, Op: SUB_REG,
-		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
-		Post:   postXZR3,
+		Fields: []FieldDef{fSF, {Name: "shtype", Hi: 23, Lo: 22}, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postShiftedXZR3,
 	},
 	{
 		Name: "SUBS_REG", Mask: 0x7F200000, Value: 0x6B000000, Op: SUBS_REG,
-		Fields: []FieldDef{fSF, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
-		Post:   postXZR3,
+		Fields: []FieldDef{fSF, {Name: "shtype", Hi: 23, Lo: 22}, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postShiftedXZR3,
 	},
 
 	// ---- Conditional select ----
@@ -156,4 +156,15 @@ func postXZR3(f map[string]int64, inst *vm.Instruction) {
 	xzrReplace(&inst.Rd)
 	xzrReplace(&inst.Rn)
 	xzrReplace(&inst.Rm)
+}
+
+// postShiftedXZR3 shifted register: XZR 替换 + shift type 安全检查
+// 当 shift amount != 0 且 shift type 不是 LSL(00) 时，标记 UNSUPPORTED
+func postShiftedXZR3(f map[string]int64, inst *vm.Instruction) {
+	xzrReplace(&inst.Rd)
+	xzrReplace(&inst.Rn)
+	xzrReplace(&inst.Rm)
+	if shtype, ok := f["shtype"]; ok && shtype != 0 && inst.Shift != 0 {
+		inst.Op = int(UNSUPPORTED)
+	}
 }

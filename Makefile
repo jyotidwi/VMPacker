@@ -58,9 +58,18 @@ $(STUB_ELF): $(STUB_O) $(STUB_LDS)
 	$(LD) -T $(STUB_LDS) -o $@ $(STUB_O)
 
 $(STUB_BIN): $(STUB_ELF) | $(BUILD_DIR)
-	$(OBJCOPY) -O binary $< $@
+	$(OBJCOPY) -O binary $< $(BUILD_DIR)/vm_interp_raw.bin
+	@powershell -Command "\
+		$$line = & '$(CROSS)nm' '$<' | Select-String 'vm_entry';\
+		if (!$$line) { Write-Error 'vm_entry not found'; exit 1 };\
+		$$off = [Convert]::ToUInt64($$line.ToString().Split(' ')[0], 16);\
+		$$hdr = [BitConverter]::GetBytes([UInt64]$$off);\
+		$$raw = [IO.File]::ReadAllBytes('$(BUILD_DIR)/vm_interp_raw.bin');\
+		$$blob = $$hdr + $$raw;\
+		[IO.File]::WriteAllBytes('$(STUB_BIN)', $$blob);\
+		Write-Host '[+] vm_interp.bin:' $$blob.Length 'bytes (vm_entry @ 0x' + $$off.ToString('X') + ')'\
+	"
 	@copy /Y "$(subst /,\,$(STUB_BIN))" "$(subst /,\,$(BUILD_DIR))\vm_interp.bin" > nul
-	@powershell -Command "Write-Host '[+] vm_interp.bin:' (Get-Item '$(STUB_BIN)').Length 'bytes'"
 
 # ------ Go packer (embed vm_interp.bin) ------
 packer: $(STUB_BIN) | $(BUILD_DIR)

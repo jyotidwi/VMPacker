@@ -13,16 +13,18 @@
 #define OP_RET 0xEE  /* RET Xn                       2B: [op][n] */
 
 /* ---- 数据移动 (MOV) ---- */
-#define OP_MOV_IMM 0x5A   /* MOV Xd, #imm64              10B: [op][d][imm64] */
-#define OP_MOV_IMM32 0x49 /* MOV Wd, #imm32               6B: [op][d][imm32]   \
-                           */
-#define OP_MOV_REG 0x2F   /* MOV Xd, Xn                   3B: [op][d][n] */
+#define OP_MOV_IMM 0x5A /* MOV Xd, #imm64              10B: [op][d][imm64] */
+#define OP_MOV_IMM32                                                           \
+  0x49                  /* MOV Wd, #imm32               6B: [op][d][imm32]     \
+                         */
+#define OP_MOV_REG 0x2F /* MOV Xd, Xn                   3B: [op][d][n] */
 
 /* ---- 内存 (LDR/STR) ---- */
-#define OP_LOAD8 0x91   /* LDRB Xd, [Xn, #off16]        5B: [op][d][n][off16] */
-#define OP_LOAD32 0xA4  /* LDR  Wd, [Xn, #off16]        5B */
-#define OP_LOAD64 0xB7  /* LDR  Xd, [Xn, #off16]        5B */
-#define OP_STORE8 0xD2  /* STRB Xn, [Xb, #off16]        5B: [op][b][n][off16]  \
+#define OP_LOAD8 0x91  /* LDRB Xd, [Xn, #off16]        5B: [op][d][n][off16] */
+#define OP_LOAD32 0xA4 /* LDR  Wd, [Xn, #off16]        5B */
+#define OP_LOAD64 0xB7 /* LDR  Xd, [Xn, #off16]        5B */
+#define OP_STORE8                                                              \
+  0xD2                  /* STRB Xn, [Xb, #off16]        5B: [op][b][n][off16]  \
                          */
 #define OP_STORE32 0x19 /* STR  Wn, [Xb, #off16]        5B */
 #define OP_STORE64 0x2A /* STR  Xn, [Xb, #off16]        5B */
@@ -41,7 +43,8 @@
 #define OP_ROR 0x3D /* ROR  Xd, Xn, Xm              4B */
 
 /* ---- 算术/逻辑 (寄存器 + 立即数) ---- */
-#define OP_ADD_IMM 0xE5 /* ADD  Xd, Xn, #imm32          7B: [op][d][n][imm32]  \
+#define OP_ADD_IMM                                                             \
+  0xE5                  /* ADD  Xd, Xn, #imm32          7B: [op][d][n][imm32]  \
                          */
 #define OP_SUB_IMM 0x78 /* SUB  Xd, Xn, #imm32          7B */
 #define OP_XOR_IMM 0x3C /* EOR  Xd, Xn, #imm32          7B */
@@ -73,6 +76,8 @@
 
 /* ---- 原生调用 ---- */
 #define OP_CALL_NAT 0xAB /* BLR  imm64 (绝对地址)        9B: [op][imm64] */
+#define OP_CALL_REG 0xBC /* BLR  Xn   (寄存器间接调用)   2B: [op][rn] */
+#define OP_BR_REG 0xCD   /* BR   Xn   (寄存器间接跳转)   2B: [op][rn] */
 
 /* ---- SIMD ---- */
 #define OP_VLD16 0xC1 /* LD1 {Vn.16B}, [Xn]            3B: [op][rn][len] */

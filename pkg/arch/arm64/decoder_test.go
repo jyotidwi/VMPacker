@@ -327,6 +327,60 @@ func TestDecode_ADD_REG(t *testing.T) {
 	expect(t, "ADD_REG Rm", 2, inst.Rm)
 }
 
+func TestDecode_LDUR_64(t *testing.T) {
+	d := NewDecoder()
+
+	// ldur x1, [x14, #-8] → 0xF85F81C1
+	// size=11, V=0, opc=01, imm9=-8(0x1F8), bits[11:10]=00, Rn=14, Rt=1
+	inst := d.Decode(0xF85F81C1, 0)
+	expect(t, "LDUR_64 Op", int(LDR_IMM), inst.Op)
+	expect(t, "LDUR_64 SF", true, inst.SF)
+	expect(t, "LDUR_64 Rn", 14, inst.Rn)
+	expect(t, "LDUR_64 Rd", 1, inst.Rd)
+	expect(t, "LDUR_64 Imm", int64(-8), inst.Imm)
+	expect(t, "LDUR_64 WB", 0, inst.WB) // 无 writeback
+}
+
+func TestDecode_STUR_64(t *testing.T) {
+	d := NewDecoder()
+
+	// stur x0, [x1, #-16] → 0xF81F0020
+	// size=11, V=0, opc=00, imm9=-16(0x1F0), Rn=1, Rt=0
+	inst := d.Decode(0xF81F0020, 0)
+	expect(t, "STUR_64 Op", int(STR_IMM), inst.Op)
+	expect(t, "STUR_64 SF", true, inst.SF)
+	expect(t, "STUR_64 Rn", 1, inst.Rn)
+	expect(t, "STUR_64 Rd", 0, inst.Rd)
+	expect(t, "STUR_64 Imm", int64(-16), inst.Imm)
+	expect(t, "STUR_64 WB", 0, inst.WB)
+}
+
+func TestDecode_LDUR_32(t *testing.T) {
+	d := NewDecoder()
+
+	// ldur w2, [x3, #5] → 0xB8405062
+	// size=10, V=0, opc=01, imm9=5, Rn=3, Rt=2
+	inst := d.Decode(0xB8405062, 0)
+	expect(t, "LDUR_32 Op", int(LDR_IMM), inst.Op)
+	expect(t, "LDUR_32 SF", false, inst.SF)
+	expect(t, "LDUR_32 Rn", 3, inst.Rn)
+	expect(t, "LDUR_32 Rd", 2, inst.Rd)
+	expect(t, "LDUR_32 Imm", int64(5), inst.Imm)
+}
+
+func TestDecode_STUR_32(t *testing.T) {
+	d := NewDecoder()
+
+	// stur w4, [x5, #-4] → 0xB81FC0A4
+	// size=10, V=0, opc=00, imm9=-4(0x1FC), Rn=5, Rt=4
+	inst := d.Decode(0xB81FC0A4, 0)
+	expect(t, "STUR_32 Op", int(STR_IMM), inst.Op)
+	expect(t, "STUR_32 SF", false, inst.SF)
+	expect(t, "STUR_32 Rn", 5, inst.Rn)
+	expect(t, "STUR_32 Rd", 4, inst.Rd)
+	expect(t, "STUR_32 Imm", int64(-4), inst.Imm)
+}
+
 // ---- 辅助 ----
 
 func expect[T comparable](t *testing.T, name string, want, got T) {
