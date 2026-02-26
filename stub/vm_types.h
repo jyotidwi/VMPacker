@@ -17,7 +17,7 @@ typedef short i16;
 /* ---- VM 配置常量 ---- */
 #define VM_REG_COUNT 32       /* X0-X30, X31=SP */
 #define VM_STACK_SIZE 32      /* PUSH/POP 操作栈深度 */
-#define VM_MEM_STACK 4096     /* 内存栈 (SP 指向的空间, 4KB) */
+#define VM_MEM_STACK 16384    /* 内存栈 (SP 指向的空间, 16KB) */
 #define VM_BYTECODE_MAX 65536 /* 最大字节码长度 (64KB, 含映射表) */
 #define VM_SIMD_BUF 64        /* SIMD 临时缓冲大小 */
 
@@ -65,7 +65,18 @@ typedef struct {
   u32 func_size;              /* 被保护函数的大小 */
   addr_map_entry_t *addr_map; /* ARM64偏移→VM偏移 映射表 */
   u32 map_count;              /* 映射表条目数 */
+
+  /* OpcodeCryptor: 逐指令 opcode 加密 */
+  u32 oc_key;                 /* opcode 加密密钥 (4B, 从 trailer 读取) */
+
+  /* PC 反向遍历 */
+  u8 reverse;                 /* 1=反向执行 (pc 递减), 0=正向 */
 } vm_ctx_t;
+
+/* ---- SP 栈边界检查 ---- */
+/* 检查地址是否在 vm_stk 范围内 (仅对 SP 相关访问使用) */
+#define VM_STK_LO(vm) ((u64)(vm)->vm_stk)
+#define VM_STK_HI(vm) ((u64)(vm)->vm_stk + VM_MEM_STACK)
 
 /* ---- VM 初始化 ---- */
 static inline void vm_ctx_init(vm_ctx_t *vm, u64 *args, u8 *bytecode, u32 len) {
@@ -97,6 +108,12 @@ static inline void vm_ctx_init(vm_ctx_t *vm, u64 *args, u8 *bytecode, u32 len) {
   vm->func_size = 0;
   vm->addr_map = 0;
   vm->map_count = 0;
+
+  /* OpcodeCryptor: 默认无加密 (key=0 时解密为恒等) */
+  vm->oc_key = 0;
+
+  /* PC 反向遍历: 默认正向 */
+  vm->reverse = 0;
 }
 
 #endif /* VM_TYPES_H */

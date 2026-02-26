@@ -30,7 +30,8 @@ import (
 
 // TranslateResult 翻译结果
 type TranslateResult struct {
-	Bytecode    []byte   // 生成的 VM 字节码
+	Bytecode    []byte   // 生成的 VM 字节码 (含 trailer)
+	CodeLen     int      // 纯字节码长度 (不含 trailer，用于 opcode 加密范围)
 	Unsupported []string // 不支持的指令列表
 	TotalInsts  int      // 总指令数
 	TransInsts  int      // 已翻译指令数
@@ -190,14 +191,20 @@ func (t *Translator) Translate(instructions []vm.Instruction) (*TranslateResult,
 		binary.LittleEndian.PutUint32(t.code[fix.vmOffset:], uint32(target))
 	}
 
-	// ---- 追加 BR 间接跳转映射表 (trailer) ----
-	// 格式: [entries...][map_count:u32][func_addr:u64][func_size:u32]
+	// 记录纯字节码长度 (trailer 之前)
+	result.CodeLen = t.pos()
+
+	// ---- 追加 trailer (BR 间接跳转映射表 + reverse + oc_key 占位) ----
+	// 格式: [entries...][reverse(1B)][oc_key(4B)][map_count:u32][func_addr:u64][func_size:u32]
 	// entry: [arm64_off:u32][vm_off:u32]
+	// reverse 和 oc_key 由 packer 填充实际值
 	mapCount := uint32(len(t.labels))
 	for arm64Off, vmOff := range t.labels {
 		t.emitU32(uint32(arm64Off))
 		t.emitU32(uint32(vmOff))
 	}
+	t.emit(0)    // reverse 占位 (packer 填充: 0=正向, 1=反向)
+	t.emitU32(0) // oc_key 占位 (packer 填充)
 	t.emitU32(mapCount)
 	t.emitU64(t.funcAddr)
 	t.emitU32(uint32(t.funcSize))

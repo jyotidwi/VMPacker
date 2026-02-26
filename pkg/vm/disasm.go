@@ -81,6 +81,14 @@ var opTable = map[byte]opInfo{
 	OpVst16: {"VST16", 3},
 }
 
+// InstructionSize 返回指定 opcode 的指令总字节数 (0 = 未知)
+func InstructionSize(op byte) int {
+	if info, ok := opTable[op]; ok {
+		return info.Size
+	}
+	return 0
+}
+
 // OpcodeName 操作码→名称
 func OpcodeName(op byte) string {
 	if info, ok := opTable[op]; ok {

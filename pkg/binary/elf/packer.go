@@ -6,6 +6,7 @@ import (
 	"debug/elf"
 	"encoding/binary"
 	"fmt"
+
 	"os"
 	"strconv"
 	"strings"
@@ -306,15 +307,7 @@ func (p *Packer) Process() error {
 			}
 		}
 
-		xorKey := byte(0xA5)
-		encrypted := make([]byte, len(result.Bytecode))
-		for i, b := range result.Bytecode {
-			encrypted[i] = b ^ xorKey
-		}
-
-		funcs = append(funcs, FuncBytecode{FI: fi, Encrypted: encrypted, XorKey: xorKey})
-
-		// debug: 生成对照文件
+		// debug: 生成对照文件 (必须在反转/加密之前, 使用原始正向字节码)
 		if p.debug {
 			debugPath := p.outputPath + ".debug.txt"
 			df, derr := os.OpenFile(debugPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
@@ -323,7 +316,7 @@ func (p *Packer) Process() error {
 			} else {
 				fmt.Fprintf(df, "================================================================\n")
 				fmt.Fprintf(df, "Function: %s @ 0x%X (size: %d)\n", entry.name, fi.Addr, fi.Size)
-				fmt.Fprintf(df, "VM bytecode: %d bytes\n", len(result.Bytecode))
+				fmt.Fprintf(df, "VM bytecode: %d bytes (pre-reverse)\n", len(result.Bytecode))
 				fmt.Fprintf(df, "================================================================\n\n")
 
 				for _, dbg := range trans.DebugLog() {
@@ -340,6 +333,73 @@ func (p *Packer) Process() error {
 				fmt.Printf("    [+] Debug: %s\n", debugPath)
 			}
 		}
+
+		// ---- PC 反向遍历: 反转指令顺序 ----
+		// 必须在 OpcodeCryptor 之前执行 (加密使用最终 pc 位置)
+		reversed, offsetMap := reverseInstructions(result.Bytecode, result.CodeLen)
+
+		// 重映射分支目标 (使用反转后的偏移)
+		newCodeLen := len(reversed)
+		remapBranchTargets(reversed, newCodeLen, offsetMap, p.verbose)
+
+		// 重映射 addr_map 中的 vm_off (BR 间接跳转)
+		// trailer 在 result.Bytecode[result.CodeLen:] 中，每个 entry 8B: [arm64_off:u32][vm_off:u32]
+		mapCount := binary.LittleEndian.Uint32(result.Bytecode[len(result.Bytecode)-16:])
+		trailerStart := result.CodeLen
+		for j := 0; j < int(mapCount); j++ {
+			entryOff := trailerStart + j*8
+			vmOff := binary.LittleEndian.Uint32(result.Bytecode[entryOff+4:])
+			if newVmOff, ok := offsetMap[int(vmOff)]; ok {
+				binary.LittleEndian.PutUint32(result.Bytecode[entryOff+4:], uint32(newVmOff))
+			}
+		}
+
+		// 用反转后的字节码替换原始指令区，保留 trailer
+		trailer := result.Bytecode[result.CodeLen:]
+		finalBytecode := make([]byte, 0, newCodeLen+len(trailer))
+		finalBytecode = append(finalBytecode, reversed...)
+		finalBytecode = append(finalBytecode, trailer...)
+		result.Bytecode = finalBytecode
+		result.CodeLen = newCodeLen
+
+		if p.verbose {
+			fmt.Printf("    [REV] reversed: %d insts, newCodeLen=%d (was %d), offsetMap entries=%d\n",
+				len(offsetMap), newCodeLen, result.CodeLen, len(offsetMap))
+		}
+
+		// ---- OpcodeCryptor: 逐指令 opcode 加密 ----
+		// 生成随机 oc_key (4 字节)
+		var ocKeyBuf [4]byte
+		if _, err := rand.Read(ocKeyBuf[:]); err != nil {
+			return fmt.Errorf("generating oc_key failed: %v", err)
+		}
+		ocKey := binary.LittleEndian.Uint32(ocKeyBuf[:])
+
+		// 加密字节码中每条指令的 opcode 字节 (仅 [0:CodeLen] 范围)
+		// reversed=true: 每条指令后有 1B size 标记
+		encryptOpcodes(result.Bytecode, result.CodeLen, ocKey, true)
+
+		// 将 reverse 标志 + oc_key 写入 trailer 占位位置
+		// trailer: [BR map entries][reverse(1B)][oc_key(4B)][map_count][func_addr][func_size]
+		// reverse 位于 BR map 之后
+		reverseOffset := result.CodeLen + int(mapCount)*8 // BR map 之后
+		result.Bytecode[reverseOffset] = 1                // reverse = 1
+		ocKeyOffset := reverseOffset + 1                  // reverse(1B) 之后
+		binary.LittleEndian.PutUint32(result.Bytecode[ocKeyOffset:], ocKey)
+
+		if p.verbose {
+			fmt.Printf("    [OC] oc_key=0x%08X, codeLen=%d, mapCount=%d, reverseOff=%d, keyOff=%d\n",
+				ocKey, result.CodeLen, mapCount, reverseOffset, ocKeyOffset)
+		}
+
+		// ---- XOR chain 加密 (整段字节码) ----
+		xorKey := byte(0xA5)
+		encrypted := make([]byte, len(result.Bytecode))
+		for i, b := range result.Bytecode {
+			encrypted[i] = b ^ xorKey
+		}
+
+		funcs = append(funcs, FuncBytecode{FI: fi, Encrypted: encrypted, XorKey: xorKey})
 	}
 
 	// 第二阶段: 批量注入 (一次 PT_NOTE 劫持)
@@ -612,4 +672,126 @@ func PrintELFInfo(path string) error {
 	}
 	fmt.Printf("  Total: %d functions\n", count)
 	return nil
+}
+
+// isBranchOpcode 判断 opcode 是否为分支指令 (含 target32 操作数)
+// 分支指令编码: [op(1B)][target32(4B)] = 5B
+func isBranchOpcode(op byte) bool {
+	switch op {
+	case vm.OpJmp, vm.OpJe, vm.OpJne, vm.OpJl, vm.OpJge,
+		vm.OpJgt, vm.OpJle, vm.OpJb, vm.OpJae, vm.OpJbe, vm.OpJa:
+		return true
+	}
+	return false
+}
+
+// reverseInstructions 反转指令顺序并追加 size 标记
+//
+// 输入: bytecode[0:codeLen] 为纯指令区 (不含 trailer)
+// 输出: 反转后的字节码 + old_offset→new_offset 映射
+//
+// 反转后每条指令后追加 1 字节 size 标记:
+//
+//	[inst_N bytes][size_N(1B)][inst_N-1 bytes][size_N-1(1B)]...
+//
+// stub 解释器反向遍历: pc--; size=bc[pc]; pc-=size; → 定位到指令起始
+func reverseInstructions(bytecode []byte, codeLen int) ([]byte, map[int]int) {
+	// 1. 解析所有指令的 (offset, size)
+	type instInfo struct {
+		offset int
+		size   int
+	}
+	var insts []instInfo
+	pc := 0
+	totalOrigBytes := 0
+	for pc < codeLen {
+		op := bytecode[pc]
+		sz := vm.InstructionSize(op)
+		if sz == 0 {
+			sz = 1 // 未知 opcode fallback
+		}
+		if pc+sz > codeLen {
+			break
+		}
+		insts = append(insts, instInfo{offset: pc, size: sz})
+		totalOrigBytes += sz
+		pc += sz
+	}
+
+	// 2. 反转顺序，追加 size 标记，构建 offset 映射
+	offsetMap := make(map[int]int) // old_offset → new_offset
+	var reversed []byte
+	for i := len(insts) - 1; i >= 0; i-- {
+		inst := insts[i]
+		newOffset := len(reversed)
+		// 复制指令字节
+		reversed = append(reversed, bytecode[inst.offset:inst.offset+inst.size]...)
+		// 追加 1 字节 size 标记
+		reversed = append(reversed, byte(inst.size))
+		// offsetMap 指向 size_marker 之后的位置 (DISPATCH 期望 pc 在此处)
+		// DISPATCH: pc-- → size_marker, size=bc[pc], pc-=size → 指令起始
+		offsetMap[inst.offset] = newOffset + inst.size + 1
+	}
+
+	return reversed, offsetMap
+}
+
+// remapBranchTargets 重映射反转后字节码中的分支目标
+//
+// 扫描 reversed bytecode，找到所有分支指令，
+// 将其 target32 从旧偏移替换为新偏移 (使用 offsetMap)
+func remapBranchTargets(bytecode []byte, codeLen int, offsetMap map[int]int, verbose bool) {
+	pc := 0
+	for pc < codeLen {
+		op := bytecode[pc]
+		sz := vm.InstructionSize(op)
+		if sz == 0 {
+			sz = 1
+		}
+		if isBranchOpcode(op) && pc+5 <= codeLen {
+			oldTarget := binary.LittleEndian.Uint32(bytecode[pc+1:])
+			if newTarget, ok := offsetMap[int(oldTarget)]; ok {
+				if verbose {
+					fmt.Printf("      [REMAP] pc=0x%04X op=0x%02X target: 0x%04X → 0x%04X\n",
+						pc, op, oldTarget, newTarget)
+				}
+				binary.LittleEndian.PutUint32(bytecode[pc+1:], uint32(newTarget))
+			} else if verbose {
+				fmt.Printf("      [REMAP] pc=0x%04X op=0x%02X target: 0x%04X → NOT FOUND!\n",
+					pc, op, oldTarget)
+			}
+		}
+		// 跳过指令 + size 标记 (反转后每条指令后有 1B size)
+		pc += sz + 1
+	}
+}
+
+// encryptOpcodes 逐指令加密 opcode 字节 (OpcodeCryptor)
+//
+// 遍历 bytecode[0:codeLen]，使用 vm.InstructionSize 确定每条指令的大小，
+// 只加密每条指令的第一个字节 (opcode)，操作数不变。
+//
+// reversed=true 时，每条指令后有 1B size 标记，步进为 size+1
+//
+// 加密公式: encrypted_opcode[pc] = opcode[pc] ^ (u8)(ocKey ^ (pc * 0x9E3779B9))
+func encryptOpcodes(bytecode []byte, codeLen int, ocKey uint32, reversed bool) {
+	pc := 0
+	for pc < codeLen {
+		op := bytecode[pc]
+		size := vm.InstructionSize(op)
+		if size == 0 {
+			// 未知 opcode，跳过 1 字节 (不应发生)
+			pc++
+			continue
+		}
+		// 加密 opcode 字节
+		mask := byte(ocKey ^ (uint32(pc) * 0x9E3779B9))
+		bytecode[pc] = op ^ mask
+		// 跳到下一条指令
+		if reversed {
+			pc += size + 1 // +1 for size marker byte
+		} else {
+			pc += size
+		}
+	}
 }

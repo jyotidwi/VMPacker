@@ -14,6 +14,7 @@
  */
 
 /* ---- 基础设施 ---- */
+
 #include "vm_decode.h"
 #include "vm_opcodes.h"
 #include "vm_types.h"
@@ -25,29 +26,6 @@
 #include "vm_handlers/h_mem.h"    /* LOAD/STORE 8/32/64 */
 #include "vm_handlers/h_mov.h"    /* MOV_IMM, MOV_IMM32, MOV_REG */
 #include "vm_handlers/h_stack.h"  /* PUSH, POP */
-
-/* ---- DEBUG: syscall-based output (取消注释以启用) ---- */
-static inline void dbg_write(const char *s, unsigned len) {
-  register long x8 __asm__("x8") = 64; /* __NR_write */
-  register long x0 __asm__("x0") = 2;  /* stderr */
-  register long x1 __asm__("x1") = (long)s;
-  register long x2r __asm__("x2") = len;
-  __asm__ volatile("svc #0" : "+r"(x0) : "r"(x8), "r"(x1), "r"(x2r) : "memory");
-}
-static void dbg_hex(const char *prefix, u64 val) {
-  char buf[32];
-  int i = 0;
-  for (const char *p = prefix; *p && i < 16; p++)
-    buf[i++] = *p;
-  for (int s = 60; s >= 0; s -= 4) {
-    int d = (val >> s) & 0xF;
-    buf[i++] = d < 10 ? '0' + d : 'a' + d - 10;
-  }
-  buf[i++] = '\n';
-  dbg_write(buf, i);
-}
-
-/* h_system.h must be after dbg_hex (used by h_br_reg debug path) */
 #include "vm_handlers/h_system.h" /* NOP, CALL_NAT, BR_REG, VLD16, VST16 */
 
 /* ---- syscall: mmap (无 libc 依赖) ---- */
@@ -112,25 +90,38 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
       bc_buf[i] = enc_bc[i] ^ xor_key;
   }
 
-  /* ---- 2. 初始化 VM 上下文 ---- */
+  /* ---- 2b. 初始化 VM 上下文 ---- */
   vm_ctx_t vm;
   vm_ctx_init(&vm, args, bc_buf, bc_len);
 
-  /* ---- 2b. 解析字节码尾部映射表 (BR 间接跳转支持) ---- */
-  /* 尾部格式: [...bytecode...][map entries][map_count:u32]
-   *           [func_addr:u64][func_size:u32] */
-  if (bc_len >= 16) {
+  /* ---- 2c. 解析字节码尾部 trailer ---- */
+  /* 尾部格式 (从末尾向前剥离):
+   *   [...bytecode...][BR map entries][reverse(1B)][oc_key(4B)]
+   *                    [map_count:u32][func_addr:u64][func_size:u32]
+   *
+   * 剥离顺序: func_size(4B) → func_addr(8B) → map_count(4B)
+   *           → oc_key(4B) → reverse(1B) → BR map entries
+   * 固定 trailer 大小: 4+8+4+4+1 = 21B
+   */
+  if (bc_len >= 21) { /* 最小 trailer: 21B */
     u32 trail_func_size = rd32(&bc_buf[bc_len - 4]);
     u64 trail_func_addr = rd64(&bc_buf[bc_len - 12]);
     u32 trail_map_count = rd32(&bc_buf[bc_len - 16]);
-    u32 map_data_size = trail_map_count * 8 + 16;
+    u32 trail_oc_key    = rd32(&bc_buf[bc_len - 20]);
+    u8  trail_reverse   = bc_buf[bc_len - 21];
+    u32 map_data_size = trail_map_count * 8 + 21; /* +21 for reverse+oc_key+map_count+func_addr+func_size */
+
+    /* 设置 OpcodeCryptor 密钥 + reverse 标志 */
+    vm.oc_key = trail_oc_key;
+    vm.reverse = trail_reverse;
+
     if (trail_func_addr != 0 && trail_map_count > 0 &&
         map_data_size <= bc_len) {
       vm.func_addr = trail_func_addr;
       vm.func_size = trail_func_size;
       vm.map_count = trail_map_count;
       vm.addr_map = (addr_map_entry_t *)&bc_buf[bc_len - map_data_size];
-      vm.bc_len = bc_len - map_data_size; /* 实际字节码不含映射表 */
+      vm.bc_len = bc_len - map_data_size; /* 实际字节码不含 trailer */
 
       /* 插入排序 addr_map (按 arm64_off 升序, 为二分查找准备) */
       /* 注: 使用字段级拷贝避免编译器生成隐式 memcpy (-nostdlib) */
@@ -146,6 +137,9 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
         vm.addr_map[k + 1].arm64_off = t_arm;
         vm.addr_map[k + 1].vm_off = t_vm;
       }
+    } else {
+      /* 无 BR map: 只剥离 21B 固定 trailer */
+      vm.bc_len = bc_len - 21;
     }
   }
 
@@ -218,20 +212,50 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
   dtab[OP_VLD16] = &&L_VLD16;
   dtab[OP_VST16] = &&L_VST16;
 
-/* 分发宏 */
+/* 分发宏 — OpcodeCryptor: 实时解密 opcode 字节 */
+/* PC 反向遍历: reverse 模式下 pc 从 bc_len 递减 */
+#define OC_DECRYPT(pc, key) ((u8)((key) ^ ((pc) * 0x9E3779B9u)))
+
+/* 反向模式: pc 指向指令末尾的 size 标记之后
+ * 步骤: pc--; size = bc[pc]; pc -= size; 现在 pc 指向指令起始 */
 #define DISPATCH()                                                             \
   do {                                                                         \
-    if (__builtin_expect(vm.pc >= vm.bc_len, 0))                               \
+    if (vm.reverse) {                                                          \
+      if (__builtin_expect((i64)vm.pc <= 0, 0))                                \
+        goto cleanup;                                                          \
+      vm.pc--;                                                                 \
+      if (__builtin_expect(vm.pc >= vm.bc_len, 0))                             \
+        goto cleanup;                                                          \
+      u8 _sz = vm.bc[vm.pc];                                                   \
+      if (__builtin_expect(_sz > vm.pc, 0))                                    \
+        goto cleanup;                                                          \
+      vm.pc -= _sz;                                                            \
+    } else {                                                                   \
+      if (__builtin_expect(vm.pc >= vm.bc_len, 0))                             \
+        goto cleanup;                                                          \
+    }                                                                          \
+    u8 _raw_op = vm.bc[vm.pc];                                                 \
+    u8 _dec_op = _raw_op ^ OC_DECRYPT(vm.pc, vm.oc_key);                      \
+    u8 _isz = vm_insn_size(_dec_op);                                           \
+    if (__builtin_expect(_isz == 0 || vm.pc + _isz > vm.bc_len, 0))           \
       goto cleanup;                                                            \
-    goto *dtab[vm.bc[vm.pc]];                                                  \
+    goto *dtab[_dec_op];                                                       \
   } while (0)
 
+/* NEXT: handler 必须总是执行; 正向 pc += n, 反向忽略 advance */
 #define NEXT(n)                                                                \
   do {                                                                         \
-    vm.pc += (n);                                                              \
+    u32 _adv = (n);                                                            \
+    __asm__ volatile("" ::: "memory");                                         \
+    if (!vm.reverse) vm.pc += _adv;                                            \
     DISPATCH();                                                                \
   } while (0)
 #define NEXT0() DISPATCH() /* handler 已设置 pc */
+
+  /* ---- PC 初始化: reverse 模式从 bc_len 开始 ---- */
+  if (vm.reverse) {
+    vm.pc = vm.bc_len; /* DISPATCH 会先递减定位到最后一条指令 */
+  }
 
   /* ---- 开始执行 ---- */
   DISPATCH();

@@ -90,7 +90,11 @@ static inline u32 h_ror(vm_ctx_t *vm) {
   u8 d = vm->bc[vm->pc + 1], a = vm->bc[vm->pc + 2], b = vm->bc[vm->pc + 3];
   u64 v = vm->R[a & 31];
   u32 n = (u32)(vm->R[b & 31] & 63);
-  vm->R[d & 31] = (v >> n) | (v << (64 - n));
+  if (n == 0) {
+    vm->R[d & 31] = v;
+  } else {
+    vm->R[d & 31] = (v >> n) | (v << (64 - n));
+  }
   return 4;
 }
 

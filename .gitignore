@@ -17,8 +17,16 @@ cmd/vmpacker/vm_interp.bin
 # IDE
 .vscode/
 .idea/
+.claude/
+.kiro/
 *.swp
 *.swo
+
+# Third-party source
+vmprotect-3.5.1/
+
+# Misc
+task.md.resolved
 
 # OS
 .DS_Store
