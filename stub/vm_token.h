@@ -24,7 +24,7 @@
 
 /* ---- Token 描述符表条目 (packer 在 payload 中写入) ---- */
 typedef struct {
-    u64 bc_va;      /* 加密字节码的 VA */
+    u64 bc_off;     /* 加密字节码相对于 _token_table_va 的偏移 (PIE 兼容) */
     u32 bc_len;     /* 字节码长度 */
     u32 reserved;   /* 对齐到 16B */
 } token_desc_t;

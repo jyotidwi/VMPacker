@@ -773,13 +773,15 @@ func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 		tokenTableOff := len(payload)
 		tokenTableVA := payloadVA + uint64(tokenTableOff)
 
-		// 每个函数一个 token_desc_t (16 bytes): bc_va(u64) + bc_len(u32) + reserved(u32)
+		// 每个函数一个 token_desc_t (16 bytes): bc_off(u64) + bc_len(u32) + reserved(u32)
+		// bc_off = 相对于 _token_table_va 自身地址的偏移 (PIE 兼容)
+		selfVA := payloadVA + tokenTableVAOff // _token_table_va 的 VA
 		for i := range funcs {
 			bcVA := payloadVA + uint64(records[i].payloadOff)
 			bcLen := uint32(records[i].bcLen)
 
 			var desc [16]byte
-			binary.LittleEndian.PutUint64(desc[0:], bcVA)
+			binary.LittleEndian.PutUint64(desc[0:], bcVA-selfVA) // 相对偏移
 			binary.LittleEndian.PutUint32(desc[8:], bcLen)
 			binary.LittleEndian.PutUint32(desc[12:], 0) // reserved
 			payload = append(payload, desc[:]...)
@@ -794,11 +796,13 @@ func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 		p.data = p.data[:payloadFileOff]
 		p.data = append(p.data, payload...)
 
-		// 5b. Patch _token_table_va 在 interpCode 中的位置
-		binary.LittleEndian.PutUint64(p.data[payloadFileOff+tokenTableVAOff:], tokenTableVA)
+		// 5b. Patch _token_table_va: 存储相对于自身地址的偏移 (PIE 兼容)
+		// selfVA = payloadVA + tokenTableVAOff (已在上面计算)
+		tblRelOff := tokenTableVA - selfVA
+		binary.LittleEndian.PutUint64(p.data[payloadFileOff+tokenTableVAOff:], tblRelOff)
 
 		fmt.Printf("    [TOKEN] descriptor table VA: 0x%X, entries: %d\n", tokenTableVA, len(funcs))
-		fmt.Printf("    [TOKEN] _token_table_va patched at blob offset 0x%X → 0x%X\n", tokenTableVAOff, tokenTableVA)
+		fmt.Printf("    [TOKEN] _token_table_va patched at blob offset 0x%X → relative offset 0x%X (PIE)\n", tokenTableVAOff, tblRelOff)
 
 		// 5c. 为每个函数生成 Token trampoline
 		vmEntryTokenVA := payloadVA + tokenEntryOff

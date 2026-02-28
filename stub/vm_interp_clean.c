@@ -99,16 +99,21 @@ u64 vm_entry_token_inner(u64 *args, u32 token) {
     u8 xor_key = (u8)TOKEN_XOR_KEY(token);
     u32 func_id = TOKEN_FUNC_ID(token);
 
-    /* 从 packer patch 的描述符表中查找字节码信息 */
-    u64 tbl_va = *(volatile u64 *)&_token_table_va;
-    if (__builtin_expect(tbl_va == 0, 0))
+    /* PIE 兼容: _token_table_va 存储的是相对于自身地址的偏移
+     * 用 ADR 获取 _token_table_va 的运行时地址 (PC-relative, ±1MB)
+     * 然后加上偏移得到 token 描述符表的实际地址 */
+    u64 self_va;
+    __asm__ volatile("adr %0, _token_table_va" : "=r"(self_va));
+    u64 tbl_off = *(volatile u64 *)&_token_table_va;
+    if (__builtin_expect(tbl_off == 0, 0))
         return 0; /* 表未初始化, 安全退出 */
 
-    token_desc_t *table = (token_desc_t *)tbl_va;
-    u8 *enc_bc = (u8 *)table[func_id].bc_va;
+    token_desc_t *table = (token_desc_t *)(self_va + tbl_off);
+    /* bc_off 也是相对于 _token_table_va 的偏移 */
+    u8 *enc_bc = (u8 *)(self_va + table[func_id].bc_off);
     u32 bc_len = table[func_id].bc_len;
 
-    if (__builtin_expect(enc_bc == 0 || bc_len == 0, 0))
+    if (__builtin_expect(enc_bc == (u8 *)self_va || bc_len == 0, 0))
         return 0; /* 无效条目, 安全退出 */
 
     return vm_entry(args, enc_bc, bc_len, xor_key);
