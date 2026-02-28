@@ -165,9 +165,14 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
       bc_buf[i] = enc_bc[i] ^ xor_key;
   }
 
-  /* ---- 2b. 初始化 VM 上下文 ---- */
-  vm_ctx_t vm;
-  vm_ctx_init(&vm, args, bc_buf, bc_len);
+  /* ---- 2b. 初始化 VM 上下文 (mmap 堆分配, 避免 Go/Rust 协程栈溢出) ---- */
+  u32 ctx_alloc = (sizeof(vm_ctx_t) + 4095u) & ~4095u;
+  vm_ctx_t *vm = (vm_ctx_t *)sys_mmap(ctx_alloc);
+  if ((long)vm < 0) {
+    sys_munmap(bc_buf, alloc_size);
+    return 0;
+  }
+  vm_ctx_init(vm, args, bc_buf, bc_len);
 
   /* ---- 2c. 解析字节码尾部 trailer ---- */
   /* 尾部格式 (从末尾向前剥离):
@@ -187,34 +192,34 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
     u32 map_data_size = trail_map_count * 8 + 21; /* +21 for reverse+oc_key+map_count+func_addr+func_size */
 
     /* 设置 OpcodeCryptor 密钥 + reverse 标志 */
-    vm.oc_key = trail_oc_key;
-    vm.reverse = trail_reverse;
+    vm->oc_key = trail_oc_key;
+    vm->reverse = trail_reverse;
 
     if (trail_func_addr != 0 && trail_map_count > 0 &&
         map_data_size <= bc_len) {
-      vm.func_addr = trail_func_addr;
-      vm.func_size = trail_func_size;
-      vm.map_count = trail_map_count;
-      vm.addr_map = (addr_map_entry_t *)&bc_buf[bc_len - map_data_size];
-      vm.bc_len = bc_len - map_data_size; /* 实际字节码不含 trailer */
+      vm->func_addr = trail_func_addr;
+      vm->func_size = trail_func_size;
+      vm->map_count = trail_map_count;
+      vm->addr_map = (addr_map_entry_t *)&bc_buf[bc_len - map_data_size];
+      vm->bc_len = bc_len - map_data_size; /* 实际字节码不含 trailer */
 
       /* 插入排序 addr_map (按 arm64_off 升序, 为二分查找准备) */
       /* 注: 使用字段级拷贝避免编译器生成隐式 memcpy (-nostdlib) */
-      for (u32 j = 1; j < vm.map_count; j++) {
-        u32 t_arm = vm.addr_map[j].arm64_off;
-        u32 t_vm = vm.addr_map[j].vm_off;
+      for (u32 j = 1; j < vm->map_count; j++) {
+        u32 t_arm = vm->addr_map[j].arm64_off;
+        u32 t_vm = vm->addr_map[j].vm_off;
         int k = (int)j - 1;
-        while (k >= 0 && vm.addr_map[k].arm64_off > t_arm) {
-          vm.addr_map[k + 1].arm64_off = vm.addr_map[k].arm64_off;
-          vm.addr_map[k + 1].vm_off = vm.addr_map[k].vm_off;
+        while (k >= 0 && vm->addr_map[k].arm64_off > t_arm) {
+          vm->addr_map[k + 1].arm64_off = vm->addr_map[k].arm64_off;
+          vm->addr_map[k + 1].vm_off = vm->addr_map[k].vm_off;
           k--;
         }
-        vm.addr_map[k + 1].arm64_off = t_arm;
-        vm.addr_map[k + 1].vm_off = t_vm;
+        vm->addr_map[k + 1].arm64_off = t_arm;
+        vm->addr_map[k + 1].vm_off = t_vm;
       }
     } else {
       /* 无 BR map: 只剥离 21B 固定 trailer */
-      vm.bc_len = bc_len - 21;
+      vm->bc_len = bc_len - 21;
     }
   }
 
@@ -234,63 +239,63 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
   vm_init_jump_table(vm_jump_table);
 
   /* ---- PC 初始化: reverse 模式从 bc_len 开始 ---- */
-  if (vm.reverse) {
-    vm.pc = vm.bc_len;
+  if (vm->reverse) {
+    vm->pc = vm->bc_len;
   }
 
   /* ---- 间接 Dispatch 主循环 ---- */
   for (;;) {
     /* -- 反向/正向 PC 定位 -- */
-    if (vm.reverse) {
-      if (__builtin_expect((i64)vm.pc <= 0, 0))
+    if (vm->reverse) {
+      if (__builtin_expect((i64)vm->pc <= 0, 0))
         break;
-      vm.pc--;
-      if (__builtin_expect(vm.pc >= vm.bc_len, 0))
+      vm->pc--;
+      if (__builtin_expect(vm->pc >= vm->bc_len, 0))
         break;
-      u8 _sz = vm.bc[vm.pc];
-      if (__builtin_expect(_sz > vm.pc, 0))
+      u8 _sz = vm->bc[vm->pc];
+      if (__builtin_expect(_sz > vm->pc, 0))
         break;
-      vm.pc -= _sz;
+      vm->pc -= _sz;
     } else {
-      if (__builtin_expect(vm.pc >= vm.bc_len, 0))
+      if (__builtin_expect(vm->pc >= vm->bc_len, 0))
         break;
     }
 
     /* -- OpcodeCryptor 解密 -- */
-    u8 _raw_op = vm.bc[vm.pc];
-    u8 _dec_op = _raw_op ^ OC_DECRYPT(vm.pc, vm.oc_key);
+    u8 _raw_op = vm->bc[vm->pc];
+    u8 _dec_op = _raw_op ^ OC_DECRYPT(vm->pc, vm->oc_key);
 
     /* -- 指令大小校验 -- */
     u8 _isz = vm_insn_size(_dec_op);
-    if (__builtin_expect(_isz == 0 || vm.pc + _isz > vm.bc_len, 0))
+    if (__builtin_expect(_isz == 0 || vm->pc + _isz > vm->bc_len, 0))
       break;
 
     /* -- 特殊处理: HALT / RET (不经过跳转表) -- */
     if (_dec_op == OP_HALT) {
-      ret = vm.R[0];
+      ret = vm->R[0];
       goto cleanup;
     }
     if (_dec_op == OP_RET) {
-      u8 _r = vm.bc[vm.pc + 1];
-      ret = vm.R[_r & 31];
+      u8 _r = vm->bc[vm->pc + 1];
+      ret = vm->R[_r & 31];
       goto cleanup;
     }
 
     /* -- 间接 Dispatch: 直接从跳转表取函数指针调用 -- */
     vm_handler_fn _handler = vm_jump_table[_dec_op];
-    u32 _step = _handler(&vm);
+    u32 _step = _handler(vm);
 
     /* -- 检查 HALT 哨兵 (wrap_unknown 等返回) -- */
     if (__builtin_expect(_step == VM_STEP_HALT, 0)) {
-      ret = vm.R[0];
+      ret = vm->R[0];
       goto cleanup;
     }
 
     /* -- 推进 PC -- */
     /* _step == 0: 分支 handler 已直接设置 pc, 不推进 */
     /* _step > 0 且非 reverse: 正常推进 */
-    if (_step > 0 && !vm.reverse) {
-      vm.pc += _step;
+    if (_step > 0 && !vm->reverse) {
+      vm->pc += _step;
     }
   }
 
@@ -375,24 +380,24 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
  * 步骤: pc--; size = bc[pc]; pc -= size; 现在 pc 指向指令起始 */
 #define DISPATCH()                                                             \
   do {                                                                         \
-    if (vm.reverse) {                                                          \
-      if (__builtin_expect((i64)vm.pc <= 0, 0))                                \
+    if (vm->reverse) {                                                         \
+      if (__builtin_expect((i64)vm->pc <= 0, 0))                               \
         goto cleanup;                                                          \
-      vm.pc--;                                                                 \
-      if (__builtin_expect(vm.pc >= vm.bc_len, 0))                             \
+      vm->pc--;                                                                \
+      if (__builtin_expect(vm->pc >= vm->bc_len, 0))                           \
         goto cleanup;                                                          \
-      u8 _sz = vm.bc[vm.pc];                                                   \
-      if (__builtin_expect(_sz > vm.pc, 0))                                    \
+      u8 _sz = vm->bc[vm->pc];                                                 \
+      if (__builtin_expect(_sz > vm->pc, 0))                                   \
         goto cleanup;                                                          \
-      vm.pc -= _sz;                                                            \
+      vm->pc -= _sz;                                                           \
     } else {                                                                   \
-      if (__builtin_expect(vm.pc >= vm.bc_len, 0))                             \
+      if (__builtin_expect(vm->pc >= vm->bc_len, 0))                           \
         goto cleanup;                                                          \
     }                                                                          \
-    u8 _raw_op = vm.bc[vm.pc];                                                 \
-    u8 _dec_op = _raw_op ^ OC_DECRYPT(vm.pc, vm.oc_key);                      \
+    u8 _raw_op = vm->bc[vm->pc];                                               \
+    u8 _dec_op = _raw_op ^ OC_DECRYPT(vm->pc, vm->oc_key);                    \
     u8 _isz = vm_insn_size(_dec_op);                                           \
-    if (__builtin_expect(_isz == 0 || vm.pc + _isz > vm.bc_len, 0))           \
+    if (__builtin_expect(_isz == 0 || vm->pc + _isz > vm->bc_len, 0))         \
       goto cleanup;                                                            \
     goto *dtab[_dec_op];                                                       \
   } while (0)
@@ -402,14 +407,14 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
   do {                                                                         \
     u32 _adv = (n);                                                            \
     __asm__ volatile("" ::: "memory");                                         \
-    if (!vm.reverse) vm.pc += _adv;                                            \
+    if (!vm->reverse) vm->pc += _adv;                                          \
     DISPATCH();                                                                \
   } while (0)
 #define NEXT0() DISPATCH() /* handler 已设置 pc */
 
   /* ---- PC 初始化: reverse 模式从 bc_len 开始 ---- */
-  if (vm.reverse) {
-    vm.pc = vm.bc_len; /* DISPATCH 会先递减定位到最后一条指令 */
+  if (vm->reverse) {
+    vm->pc = vm->bc_len; /* DISPATCH 会先递减定位到最后一条指令 */
   }
 
   /* ---- 开始执行 ---- */
@@ -417,140 +422,140 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
 
 /* ---- 系统 ---- */
 L_NOP:
-  NEXT(h_nop(&vm));
+  NEXT(h_nop(vm));
 L_HALT:
-  ret = vm.R[0];
+  ret = vm->R[0];
   goto cleanup;
 L_RET: {
-  u8 r = vm.bc[vm.pc + 1];
-  ret = vm.R[r & 31];
+  u8 r = vm->bc[vm->pc + 1];
+  ret = vm->R[r & 31];
   goto cleanup;
 }
 
 /* ---- 数据移动 ---- */
 L_MOV_IMM:
-  NEXT(h_mov_imm(&vm));
+  NEXT(h_mov_imm(vm));
 L_MOV_IMM32:
-  NEXT(h_mov_imm32(&vm));
+  NEXT(h_mov_imm32(vm));
 L_MOV_REG:
-  NEXT(h_mov_reg(&vm));
+  NEXT(h_mov_reg(vm));
 
 /* ---- 内存访问 ---- */
 L_LOAD8:
-  NEXT(h_load8(&vm));
+  NEXT(h_load8(vm));
 L_LOAD32:
-  NEXT(h_load32(&vm));
+  NEXT(h_load32(vm));
 L_LOAD64:
-  NEXT(h_load64(&vm));
+  NEXT(h_load64(vm));
 L_STORE8:
-  NEXT(h_store8(&vm));
+  NEXT(h_store8(vm));
 L_STORE32:
-  NEXT(h_store32(&vm));
+  NEXT(h_store32(vm));
 L_STORE64:
-  NEXT(h_store64(&vm));
+  NEXT(h_store64(vm));
 L_LOAD16:
-  NEXT(h_load16(&vm));
+  NEXT(h_load16(vm));
 L_STORE16:
-  NEXT(h_store16(&vm));
+  NEXT(h_store16(vm));
 
 /* ---- ALU 三寄存器 ---- */
 L_ADD:
-  NEXT(h_add(&vm));
+  NEXT(h_add(vm));
 L_SUB:
-  NEXT(h_sub(&vm));
+  NEXT(h_sub(vm));
 L_MUL:
-  NEXT(h_mul(&vm));
+  NEXT(h_mul(vm));
 L_XOR:
-  NEXT(h_xor(&vm));
+  NEXT(h_xor(vm));
 L_AND:
-  NEXT(h_and(&vm));
+  NEXT(h_and(vm));
 L_OR:
-  NEXT(h_or(&vm));
+  NEXT(h_or(vm));
 L_SHL:
-  NEXT(h_shl(&vm));
+  NEXT(h_shl(vm));
 L_SHR:
-  NEXT(h_shr(&vm));
+  NEXT(h_shr(vm));
 L_ASR:
-  NEXT(h_asr(&vm));
+  NEXT(h_asr(vm));
 L_NOT:
-  NEXT(h_not(&vm));
+  NEXT(h_not(vm));
 L_ROR:
-  NEXT(h_ror(&vm));
+  NEXT(h_ror(vm));
 
 /* ---- ALU 立即数 ---- */
 L_ADD_IMM:
-  NEXT(h_add_imm(&vm));
+  NEXT(h_add_imm(vm));
 L_SUB_IMM:
-  NEXT(h_sub_imm(&vm));
+  NEXT(h_sub_imm(vm));
 L_XOR_IMM:
-  NEXT(h_xor_imm(&vm));
+  NEXT(h_xor_imm(vm));
 L_AND_IMM:
-  NEXT(h_and_imm(&vm));
+  NEXT(h_and_imm(vm));
 L_OR_IMM:
-  NEXT(h_or_imm(&vm));
+  NEXT(h_or_imm(vm));
 L_MUL_IMM:
-  NEXT(h_mul_imm(&vm));
+  NEXT(h_mul_imm(vm));
 L_SHL_IMM:
-  NEXT(h_shl_imm(&vm));
+  NEXT(h_shl_imm(vm));
 L_SHR_IMM:
-  NEXT(h_shr_imm(&vm));
+  NEXT(h_shr_imm(vm));
 L_ASR_IMM:
-  NEXT(h_asr_imm(&vm));
+  NEXT(h_asr_imm(vm));
 
 /* ---- 比较 ---- */
 L_CMP:
-  NEXT(h_cmp(&vm));
+  NEXT(h_cmp(vm));
 L_CMP_IMM:
-  NEXT(h_cmp_imm(&vm));
+  NEXT(h_cmp_imm(vm));
 
 /* ---- 分支 (handler 返回 0, 已设置 pc) ---- */
 L_JMP:
-  h_jmp(&vm);
+  h_jmp(vm);
   NEXT0();
 L_JE:
-  h_je(&vm);
+  h_je(vm);
   NEXT0();
 L_JNE:
-  h_jne(&vm);
+  h_jne(vm);
   NEXT0();
 L_JL:
-  h_jl(&vm);
+  h_jl(vm);
   NEXT0();
 L_JGE:
-  h_jge(&vm);
+  h_jge(vm);
   NEXT0();
 L_JGT:
-  h_jgt(&vm);
+  h_jgt(vm);
   NEXT0();
 L_JLE:
-  h_jle(&vm);
+  h_jle(vm);
   NEXT0();
 L_JB:
-  h_jb(&vm);
+  h_jb(vm);
   NEXT0();
 L_JAE:
-  h_jae(&vm);
+  h_jae(vm);
   NEXT0();
 L_JBE:
-  h_jbe(&vm);
+  h_jbe(vm);
   NEXT0();
 L_JA:
-  h_ja(&vm);
+  h_ja(vm);
   NEXT0();
 
 /* ---- 栈操作 ---- */
 L_PUSH:
-  NEXT(h_push(&vm));
+  NEXT(h_push(vm));
 L_POP:
-  NEXT(h_pop(&vm));
+  NEXT(h_pop(vm));
 
 /* ---- 原生调用 ---- */
 L_CALL_NAT:
-  NEXT(h_call_nat(&vm));
+  NEXT(h_call_nat(vm));
 L_CALL_REG:
-  NEXT(h_call_reg(&vm));
+  NEXT(h_call_reg(vm));
 L_BR_REG: {
-  u32 a = h_br_reg(&vm);
+  u32 a = h_br_reg(vm);
   if (a)
     NEXT(a);
   else
@@ -559,13 +564,13 @@ L_BR_REG: {
 
 /* ---- SIMD ---- */
 L_VLD16:
-  NEXT(h_vld16(&vm));
+  NEXT(h_vld16(vm));
 L_VST16:
-  NEXT(h_vst16(&vm));
+  NEXT(h_vst16(vm));
 
 /* ---- 未知指令 ---- */
 L_UNKNOWN:
-  ret = vm.R[0]; /* fall through to cleanup */
+  ret = vm->R[0]; /* fall through to cleanup */
 
 #undef DISPATCH
 #undef NEXT
@@ -575,6 +580,7 @@ L_UNKNOWN:
 
   /* ---- 统一退出: 释放 mmap 防止泄漏 ---- */
 cleanup:
+  sys_munmap(vm, ctx_alloc);
   sys_munmap(bc_buf, alloc_size);
   return ret;
 }

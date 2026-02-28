@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -650,7 +651,19 @@ func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 		p.data = append(p.data, 0x00)
 	}
 	payloadFileOff := uint64(len(p.data)) // 现在是页对齐的
-	payloadVA := uint64(0x800000)         // 页对齐的 VA
+	// 动态计算 payloadVA: 扫描所有 LOAD 段，取最高 Vaddr+Memsz，向上对齐到 64KB
+	var maxVA uint64
+	for i := 0; i < int(ehdr.Phnum); i++ {
+		phOff := ehdr.Phoff + uint64(i)*uint64(ehdr.Phentsize)
+		ph := readPhdr64(p.data, phOff)
+		if ph.Type == uint32(elf.PT_LOAD) {
+			end := ph.Vaddr + ph.Memsz
+			if end > maxVA {
+				maxVA = end
+			}
+		}
+	}
+	payloadVA := (maxVA + 0xFFFF) &^ 0xFFFF // 向上对齐到 64KB 边界
 
 	p.data = append(p.data, payload...)
 
@@ -696,6 +709,57 @@ func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 
 	fmt.Printf("    PT_NOTE[%d] -> PT_LOAD RX: off=0x%X va=0x%X sz=0x%X\n",
 		noteIdx, payloadFileOff, payloadVA, len(payload))
+
+	// 4b. 按 Vaddr 升序重排所有 PT_LOAD 段，防止内核映射 BSS 失败
+	{
+		type phdrSlot struct {
+			idx  int
+			phdr elf64Phdr
+		}
+		var loads []phdrSlot
+		for i := 0; i < int(ehdr.Phnum); i++ {
+			off := ehdr.Phoff + uint64(i)*uint64(ehdr.Phentsize)
+			ph := readPhdr64(p.data, off)
+			if ph.Type == uint32(elf.PT_LOAD) {
+				loads = append(loads, phdrSlot{idx: i, phdr: ph})
+			}
+		}
+		// 检查是否需要重排
+		needSort := false
+		for k := 1; k < len(loads); k++ {
+			if loads[k].phdr.Vaddr < loads[k-1].phdr.Vaddr {
+				needSort = true
+				break
+			}
+		}
+		if needSort {
+			// 按 Vaddr 排序 PHDR 内容
+			sort.Slice(loads, func(a, b int) bool {
+				return loads[a].phdr.Vaddr < loads[b].phdr.Vaddr
+			})
+			// 收集原始 PHDR 槽位索引（按在 PHDR 表中出现的顺序）
+			slotIndices := make([]int, len(loads))
+			for k := range loads {
+				slotIndices[k] = loads[k].idx
+			}
+			sort.Ints(slotIndices)
+			// 将排序后的 PHDR 内容写回原始槽位
+			for k, si := range slotIndices {
+				off := ehdr.Phoff + uint64(si)*uint64(ehdr.Phentsize)
+				writePhdr64(p.data, off, loads[k].phdr)
+			}
+			fmt.Printf("    [PHDR] Reordered %d PT_LOAD segments by Vaddr ascending\n", len(loads))
+			// 更新 notePhdrOff — 找到 payload 段的新位置
+			for i := 0; i < int(ehdr.Phnum); i++ {
+				off := ehdr.Phoff + uint64(i)*uint64(ehdr.Phentsize)
+				ph := readPhdr64(p.data, off)
+				if ph.Type == uint32(elf.PT_LOAD) && ph.Vaddr == payloadVA {
+					notePhdrOff = off
+					break
+				}
+			}
+		}
+	}
 
 	// 5. 为每个函数写跳板 + 销毁原始代码
 	if p.tokenEntry {
