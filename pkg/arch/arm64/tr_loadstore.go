@@ -24,7 +24,7 @@ func (t *Translator) trLoad(inst vm.Instruction) error {
 	op := Op(inst.Op)
 	var vmOp byte
 	switch op {
-	case LDRB_IMM, LDRSB_IMM:
+	case LDRB_IMM:
 		vmOp = vm.OpLoad8
 	case LDR_IMM:
 		if inst.SF {
@@ -32,9 +32,16 @@ func (t *Translator) trLoad(inst vm.Instruction) error {
 		} else {
 			vmOp = vm.OpLoad32
 		}
-	case LDRH_IMM, LDRSH_IMM:
-		vmOp = vm.OpLoad32
+	case LDRSB_IMM:
+		// LDRSB: LOAD8 + SHL 56 + ASR 56 (符号扩展 8→64)
+		vmOp = vm.OpLoad8
+	case LDRH_IMM:
+		vmOp = vm.OpLoad16
+	case LDRSH_IMM:
+		// LDRSH: LOAD16 + SHL 48 + ASR 48 (符号扩展 16→64)
+		vmOp = vm.OpLoad16
 	case LDRSW_IMM:
+		// LDRSW: LOAD32 + SHL 32 + ASR 32 (符号扩展 32→64)
 		vmOp = vm.OpLoad32
 	default:
 		vmOp = vm.OpLoad64
@@ -63,6 +70,28 @@ func (t *Translator) trLoad(inst vm.Instruction) error {
 			wbImm = -wbImm
 		}
 		t.emitU32(uint32(wbImm))
+	}
+
+	// LDRSW: 符号扩展 32→64 (SHL 32 + ASR 32)
+	if op == LDRSW_IMM {
+		t.emit(vm.OpShlImm, rd, rd)
+		t.emitU32(32)
+		t.emit(vm.OpAsrImm, rd, rd)
+		t.emitU32(32)
+	}
+	// LDRSB: 符号扩展 8→64 (SHL 56 + ASR 56)
+	if op == LDRSB_IMM {
+		t.emit(vm.OpShlImm, rd, rd)
+		t.emitU32(56)
+		t.emit(vm.OpAsrImm, rd, rd)
+		t.emitU32(56)
+	}
+	// LDRSH: 符号扩展 16→64 (SHL 48 + ASR 48)
+	if op == LDRSH_IMM {
+		t.emit(vm.OpShlImm, rd, rd)
+		t.emitU32(48)
+		t.emit(vm.OpAsrImm, rd, rd)
+		t.emitU32(48)
 	}
 	return nil
 }
@@ -95,7 +124,7 @@ func (t *Translator) trStore(inst vm.Instruction) error {
 			vmOp = vm.OpStore32
 		}
 	case STRH_IMM:
-		vmOp = vm.OpStore32
+		vmOp = vm.OpStore16
 	default:
 		vmOp = vm.OpStore64
 	}

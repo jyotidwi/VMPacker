@@ -83,6 +83,7 @@ type Packer struct {
 	verbose      bool
 	stripSymbols bool
 	debug        bool
+	tokenEntry   bool // Token 化入口模式
 	data         []byte
 	interpBlob   []byte
 }
@@ -95,7 +96,7 @@ type FuncBytecode struct {
 }
 
 // NewPacker 创建 ELF 打包器
-func NewPacker(input, output string, funcs []string, addrSpecs []AddrSpec, verbose, strip, debug bool, interpBlob []byte) *Packer {
+func NewPacker(input, output string, funcs []string, addrSpecs []AddrSpec, verbose, strip, debug, tokenEntry bool, interpBlob []byte) *Packer {
 	return &Packer{
 		inputPath:    input,
 		outputPath:   output,
@@ -104,6 +105,7 @@ func NewPacker(input, output string, funcs []string, addrSpecs []AddrSpec, verbo
 		verbose:      verbose,
 		stripSymbols: strip,
 		debug:        debug,
+		tokenEntry:   tokenEntry,
 		interpBlob:   interpBlob,
 	}
 }
@@ -305,6 +307,55 @@ func (p *Packer) Process() error {
 			for _, u := range result.Unsupported {
 				fmt.Printf("        %s\n", u)
 			}
+
+			// 生成翻译失败 debug 文件
+			debugPath := p.outputPath + ".debug.txt"
+			df, derr := os.Create(debugPath)
+			if derr != nil {
+				fmt.Printf("    [!] debug 文件创建失败: %v\n", derr)
+			} else {
+				fmt.Fprintf(df, "================================================================\n")
+				fmt.Fprintf(df, "翻译失败报告 — %s @ 0x%X\n", entry.name, fi.Addr)
+				fmt.Fprintf(df, "函数大小: %d bytes, 总指令数: %d, 已翻译: %d\n",
+					fi.Size, result.TotalInsts, result.TransInsts)
+				fmt.Fprintf(df, "================================================================\n\n")
+				fmt.Fprintf(df, "不支持的指令 (%d):\n\n", len(result.Unsupported))
+
+				// 构建 offset→Instruction 索引，用于提取原始字节
+				instMap := make(map[int]vm.Instruction)
+				for _, inst := range insts {
+					instMap[inst.Offset] = inst
+				}
+
+				for idx, u := range result.Unsupported {
+					fmt.Fprintf(df, "[%d] %s\n", idx+1, u)
+
+					// 尝试从 unsupported 字符串解析偏移 (格式: "偏移 0xNNNN: ...")
+					var off int
+					if _, err := fmt.Sscanf(u, "偏移 0x%X:", &off); err == nil {
+						if inst, ok := instMap[off]; ok {
+							raw := inst.Raw
+							fmt.Fprintf(df, "    原始字节: %02X %02X %02X %02X\n",
+								byte(raw), byte(raw>>8), byte(raw>>16), byte(raw>>24))
+							fmt.Fprintf(df, "    绝对地址: 0x%X\n", fi.Addr+uint64(off))
+						}
+					}
+					fmt.Fprintln(df)
+				}
+
+				fmt.Fprintf(df, "================================================================\n")
+				fmt.Fprintf(df, "修复建议:\n")
+				fmt.Fprintf(df, "- 为每条不支持的指令编写 demo 测试用例 (参考 demo/ 目录)\n")
+				fmt.Fprintf(df, "- 在 pkg/arch/arm64/translator.go translateOne() 中添加对应 case\n")
+				fmt.Fprintf(df, "- 使用 -v 标志查看完整反汇编上下文\n")
+				fmt.Fprintf(df, "================================================================\n")
+
+				df.Close()
+				fmt.Printf("    [+] 翻译失败 debug 文件: %s\n", debugPath)
+			}
+
+			return fmt.Errorf("translation aborted: %d unsupported instruction(s) in %s — cannot produce safe output",
+				len(result.Unsupported), entry.name)
 		}
 
 		// debug: 生成对照文件 (必须在反转/加密之前, 使用原始正向字节码)
@@ -429,8 +480,9 @@ func (p *Packer) Process() error {
 }
 
 // stripSections 就地清除符号/调试 section
-// 不改变文件布局，只将目标 section 的内容清零并置类型为 SHT_NULL
-// 这样 strip 后 payload 不会被破坏
+// stripSections 清除符号表等 section（等效 strip -s）
+// 不改变文件布局和 section header 数量，只将目标 section 置空
+// 同时修复其他 section 对被删除 section 的 sh_link 引用
 func (p *Packer) stripSections() {
 	ehdr := readEhdr64(p.data)
 
@@ -461,31 +513,70 @@ func (p *Packer) stripSections() {
 		".note.gnu.build-id": true,
 	}
 
+	// 第一遍: 收集被删除的 section index
+	stripped := make(map[int]bool)
 	for i := 0; i < int(ehdr.Shnum); i++ {
 		shOff := ehdr.Shoff + uint64(i)*uint64(ehdr.Shentsize)
 		nameOff := binary.LittleEndian.Uint32(p.data[shOff:])
 		name := getSectionName(nameOff)
-
-		if !stripNames[name] {
-			continue
+		if stripNames[name] {
+			stripped[i] = true
 		}
+	}
 
-		// 读取 section 的文件偏移和大小
-		secOff := binary.LittleEndian.Uint64(p.data[shOff+24:])
-		secSz := binary.LittleEndian.Uint64(p.data[shOff+32:])
+	// 第二遍: 清零被删除的 section，修复 sh_link 引用
+	for i := 0; i < int(ehdr.Shnum); i++ {
+		shOff := ehdr.Shoff + uint64(i)*uint64(ehdr.Shentsize)
 
-		// 用随机垃圾覆盖 section 内容
-		if secOff+secSz <= uint64(len(p.data)) {
-			garbage := make([]byte, secSz)
-			rand.Read(garbage)
-			copy(p.data[secOff:], garbage)
-		}
+		if stripped[i] {
+			// 读取 section 的文件偏移和大小
+			secOff := binary.LittleEndian.Uint64(p.data[shOff+24:])
+			secSz := binary.LittleEndian.Uint64(p.data[shOff+32:])
 
-		// 置 section type 为 SHT_NULL (0)
-		binary.LittleEndian.PutUint32(p.data[shOff+4:], 0) // sh_type = SHT_NULL
+			// 用 0x00 清零 section 内容（等效 strip -s）
+			if secOff+secSz <= uint64(len(p.data)) {
+				for j := uint64(0); j < secSz; j++ {
+					p.data[secOff+j] = 0
+				}
+			}
 
-		if p.verbose {
-			fmt.Printf("    [strip] %s zeroed (off=0x%X, sz=%d)\n", name, secOff, secSz)
+			nameOff := binary.LittleEndian.Uint32(p.data[shOff:])
+			name := getSectionName(nameOff)
+
+			// 清零整个 section header entry（保留 sh_name 用于调试）
+			// sh_type = SHT_NULL
+			binary.LittleEndian.PutUint32(p.data[shOff+4:], 0)
+			// sh_flags = 0
+			binary.LittleEndian.PutUint64(p.data[shOff+8:], 0)
+			// sh_addr = 0
+			binary.LittleEndian.PutUint64(p.data[shOff+16:], 0)
+			// sh_offset = 0
+			binary.LittleEndian.PutUint64(p.data[shOff+24:], 0)
+			// sh_size = 0
+			binary.LittleEndian.PutUint64(p.data[shOff+32:], 0)
+			// sh_link = 0
+			binary.LittleEndian.PutUint32(p.data[shOff+40:], 0)
+			// sh_info = 0
+			binary.LittleEndian.PutUint32(p.data[shOff+44:], 0)
+			// sh_addralign = 0
+			binary.LittleEndian.PutUint64(p.data[shOff+48:], 0)
+			// sh_entsize = 0
+			binary.LittleEndian.PutUint64(p.data[shOff+56:], 0)
+
+			if p.verbose {
+				fmt.Printf("    [strip] %s cleared (off=0x%X, sz=%d)\n", name, secOff, secSz)
+			}
+		} else {
+			// 非被删除的 section: 检查 sh_link 是否指向被删除的 section
+			shLink := binary.LittleEndian.Uint32(p.data[shOff+40:])
+			if shLink > 0 && stripped[int(shLink)] {
+				binary.LittleEndian.PutUint32(p.data[shOff+40:], 0) // 清零 sh_link
+				if p.verbose {
+					nameOff := binary.LittleEndian.Uint32(p.data[shOff:])
+					name := getSectionName(nameOff)
+					fmt.Printf("    [strip] %s: sh_link %d → 0 (target stripped)\n", name, shLink)
+				}
+			}
 		}
 	}
 }
@@ -494,12 +585,40 @@ func (p *Packer) stripSections() {
 func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 	ehdr := readEhdr64(p.data)
 
-	// 从 blob 前 8 字节读取 vm_entry 偏移（由 Makefile 自动注入）
+	// 从 blob 头部读取偏移信息
 	if len(p.interpBlob) < 8 {
 		return fmt.Errorf("interp blob too small: %d bytes", len(p.interpBlob))
 	}
-	entryOff := binary.LittleEndian.Uint64(p.interpBlob[:8])
-	interpCode := p.interpBlob[8:] // 纯代码部分（去掉 8 字节头）
+
+	var entryOff, tokenEntryOff, tokenTableVAOff uint64
+	var interpCode []byte
+
+	if p.tokenEntry {
+		// Token 模式: 24 字节扩展头
+		if len(p.interpBlob) < 24 {
+			return fmt.Errorf("token mode requires extended blob header (24 bytes), got %d", len(p.interpBlob))
+		}
+		entryOff = binary.LittleEndian.Uint64(p.interpBlob[:8])
+		tokenEntryOff = binary.LittleEndian.Uint64(p.interpBlob[8:16])
+		tokenTableVAOff = binary.LittleEndian.Uint64(p.interpBlob[16:24])
+		interpCode = p.interpBlob[24:]
+		if tokenEntryOff == 0 {
+			return fmt.Errorf("vm_entry_token not found in blob (compile with -DVM_TOKEN_ENTRY)")
+		}
+		if tokenTableVAOff == 0 {
+			return fmt.Errorf("_token_table_va not found in blob (compile with -DVM_TOKEN_ENTRY)")
+		}
+	} else {
+		// 标准模式: blob 始终有 24 字节头 (vm_entry + vm_entry_token + _token_table_va)
+		// 即使不使用 token 模式，也需要跳过完整头部
+		if len(p.interpBlob) >= 24 {
+			entryOff = binary.LittleEndian.Uint64(p.interpBlob[:8])
+			interpCode = p.interpBlob[24:]
+		} else {
+			entryOff = binary.LittleEndian.Uint64(p.interpBlob[:8])
+			interpCode = p.interpBlob[8:]
+		}
+	}
 
 	// 1. 构造 payload: [interpCode][bc0][pad][bc1][pad][...]
 	payload := make([]byte, 0, len(interpCode)+1024)
@@ -579,36 +698,106 @@ func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 		noteIdx, payloadFileOff, payloadVA, len(payload))
 
 	// 5. 为每个函数写跳板 + 销毁原始代码
-	for i, fb := range funcs {
-		bcVA := payloadVA + uint64(records[i].payloadOff)
-		bcLen := uint32(records[i].bcLen)
+	if p.tokenEntry {
+		// ---- Token 模式 ----
 
-		trampoline := BuildTrampoline(fb.FI.Addr, interpVA, bcVA, bcLen, fb.XorKey)
-		if uint64(len(trampoline)) > fb.FI.Size {
-			return fmt.Errorf("trampoline for %s (%d bytes) exceeds function size (%d bytes)",
-				fb.FI.Name, len(trampoline), fb.FI.Size)
+		// 5a. 构建 token_desc_t 描述符表
+		// 8-byte 对齐
+		for len(payload)%8 != 0 {
+			payload = append(payload, 0x00)
+		}
+		tokenTableOff := len(payload)
+		tokenTableVA := payloadVA + uint64(tokenTableOff)
+
+		// 每个函数一个 token_desc_t (16 bytes): bc_va(u64) + bc_len(u32) + reserved(u32)
+		for i := range funcs {
+			bcVA := payloadVA + uint64(records[i].payloadOff)
+			bcLen := uint32(records[i].bcLen)
+
+			var desc [16]byte
+			binary.LittleEndian.PutUint64(desc[0:], bcVA)
+			binary.LittleEndian.PutUint32(desc[8:], bcLen)
+			binary.LittleEndian.PutUint32(desc[12:], 0) // reserved
+			payload = append(payload, desc[:]...)
 		}
 
-		// 写入跳板
-		for j := 0; j < len(trampoline); j++ {
-			p.data[fb.FI.Offset+uint64(j)] = trampoline[j]
-		}
+		// 更新 PT_LOAD 段大小 (payload 增长了)
+		newPhdr.Filesz = uint64(len(payload))
+		newPhdr.Memsz = uint64(len(payload))
+		writePhdr64(p.data, notePhdrOff, newPhdr)
 
-		// 用随机垃圾字节彻底销毁跳板后的原始代码
-		// 使用 crypto/rand 生成不可预测的数据，防止逆向还原
-		garbageLen := int(fb.FI.Size) - len(trampoline)
-		if garbageLen > 0 {
-			garbage := make([]byte, garbageLen)
-			rand.Read(garbage)
-			copy(p.data[fb.FI.Offset+uint64(len(trampoline)):], garbage)
-		}
+		// 重新追加 payload 到文件 (覆盖之前的)
+		p.data = p.data[:payloadFileOff]
+		p.data = append(p.data, payload...)
 
-		if p.verbose {
-			fmt.Printf("    [%s] Trampoline (%d bytes) + Garbage (%d bytes):\n",
-				fb.FI.Name, len(trampoline), garbageLen)
-			for j := 0; j < len(trampoline); j += 4 {
-				inst := binary.LittleEndian.Uint32(trampoline[j:])
-				fmt.Printf("      +%02X: 0x%08X\n", j, inst)
+		// 5b. Patch _token_table_va 在 interpCode 中的位置
+		binary.LittleEndian.PutUint64(p.data[payloadFileOff+tokenTableVAOff:], tokenTableVA)
+
+		fmt.Printf("    [TOKEN] descriptor table VA: 0x%X, entries: %d\n", tokenTableVA, len(funcs))
+		fmt.Printf("    [TOKEN] _token_table_va patched at blob offset 0x%X → 0x%X\n", tokenTableVAOff, tokenTableVA)
+
+		// 5c. 为每个函数生成 Token trampoline
+		vmEntryTokenVA := payloadVA + tokenEntryOff
+		fmt.Printf("    [TOKEN] vm_entry_token VA: 0x%X\n", vmEntryTokenVA)
+
+		for i, fb := range funcs {
+			funcID := uint32(i) // func_id = 序号 (0-based)
+			token := (uint32(fb.XorKey) << 24) | (0 << 12) | (funcID & 0xFFF)
+
+			trampoline := BuildTokenTrampoline(fb.FI.Addr, vmEntryTokenVA, token)
+			if uint64(len(trampoline)) > fb.FI.Size {
+				return fmt.Errorf("token trampoline for %s (%d bytes) exceeds function size (%d bytes)",
+					fb.FI.Name, len(trampoline), fb.FI.Size)
+			}
+
+			// 写入跳板
+			for j := 0; j < len(trampoline); j++ {
+				p.data[fb.FI.Offset+uint64(j)] = trampoline[j]
+			}
+
+			// 销毁剩余原始代码
+			garbageLen := int(fb.FI.Size) - len(trampoline)
+			if garbageLen > 0 {
+				garbage := make([]byte, garbageLen)
+				rand.Read(garbage)
+				copy(p.data[fb.FI.Offset+uint64(len(trampoline)):], garbage)
+			}
+
+			fmt.Printf("    [TOKEN] %s: func_id=%d, token=0x%08X, trampoline=%d bytes\n",
+				fb.FI.Name, funcID, token, len(trampoline))
+		}
+	} else {
+		// ---- 标准模式 ----
+		for i, fb := range funcs {
+			bcVA := payloadVA + uint64(records[i].payloadOff)
+			bcLen := uint32(records[i].bcLen)
+
+			trampoline := BuildTrampoline(fb.FI.Addr, interpVA, bcVA, bcLen, fb.XorKey)
+			if uint64(len(trampoline)) > fb.FI.Size {
+				return fmt.Errorf("trampoline for %s (%d bytes) exceeds function size (%d bytes)",
+					fb.FI.Name, len(trampoline), fb.FI.Size)
+			}
+
+			// 写入跳板
+			for j := 0; j < len(trampoline); j++ {
+				p.data[fb.FI.Offset+uint64(j)] = trampoline[j]
+			}
+
+			// 用随机垃圾字节彻底销毁跳板后的原始代码
+			garbageLen := int(fb.FI.Size) - len(trampoline)
+			if garbageLen > 0 {
+				garbage := make([]byte, garbageLen)
+				rand.Read(garbage)
+				copy(p.data[fb.FI.Offset+uint64(len(trampoline)):], garbage)
+			}
+
+			if p.verbose {
+				fmt.Printf("    [%s] Trampoline (%d bytes) + Garbage (%d bytes):\n",
+					fb.FI.Name, len(trampoline), garbageLen)
+				for j := 0; j < len(trampoline); j += 4 {
+					inst := binary.LittleEndian.Uint32(trampoline[j:])
+					fmt.Printf("      +%02X: 0x%08X\n", j, inst)
+				}
 			}
 		}
 	}

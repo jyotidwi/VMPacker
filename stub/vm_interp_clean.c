@@ -28,6 +28,16 @@
 #include "vm_handlers/h_stack.h"  /* PUSH, POP */
 #include "vm_handlers/h_system.h" /* NOP, CALL_NAT, BR_REG, VLD16, VST16 */
 
+/* ---- 间接 Dispatch 跳转表 (条件编译) ---- */
+#ifdef VM_INDIRECT_DISPATCH
+#include "vm_dispatch.h"
+#endif
+
+/* ---- Token 化入口 (条件编译) ---- */
+#ifdef VM_TOKEN_ENTRY
+#include "vm_token.h"
+#endif
+
 /* ---- syscall: mmap (无 libc 依赖) ---- */
 static inline void *sys_mmap(unsigned long size) {
   register long x8 __asm__("x8") = 222; /* __NR_mmap */
@@ -63,6 +73,71 @@ static inline void sys_munmap(void *addr, unsigned long size) {
  *
  * 返回: R[0] (模拟 X0 返回值)
  */
+__attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
+                                                     u32 bc_len, u8 xor_key);
+
+/* ================================================================
+ * Token 化入口 (条件编译)
+ *
+ * Token trampoline (3 条指令):
+ *   MOV  W16, #token_lo16
+ *   MOVK W16, #token_hi16, LSL#16
+ *   B    vm_entry_token
+ *
+ * X16 (IP0) 传递 token，X0-X7 保持调用方原始参数不变。
+ * vm_entry_token_asm 负责保存寄存器并调用 vm_entry_token_inner。
+ * ================================================================ */
+#ifdef VM_TOKEN_ENTRY
+
+/* Packer 在 payload 中 patch 此变量为 token 描述符表的 VA */
+__attribute__((section(".data.entry"), used))
+volatile u64 _token_table_va = 0;
+
+/* 内部 C 函数: 解码 token 并调用 vm_entry */
+__attribute__((noinline, section(".text.entry")))
+u64 vm_entry_token_inner(u64 *args, u32 token) {
+    u8 xor_key = (u8)TOKEN_XOR_KEY(token);
+    u32 func_id = TOKEN_FUNC_ID(token);
+
+    /* 从 packer patch 的描述符表中查找字节码信息 */
+    u64 tbl_va = *(volatile u64 *)&_token_table_va;
+    if (__builtin_expect(tbl_va == 0, 0))
+        return 0; /* 表未初始化, 安全退出 */
+
+    token_desc_t *table = (token_desc_t *)tbl_va;
+    u8 *enc_bc = (u8 *)table[func_id].bc_va;
+    u32 bc_len = table[func_id].bc_len;
+
+    if (__builtin_expect(enc_bc == 0 || bc_len == 0, 0))
+        return 0; /* 无效条目, 安全退出 */
+
+    return vm_entry(args, enc_bc, bc_len, xor_key);
+}
+
+/* Naked 汇编入口: 保存调用方寄存器, 调用 C 内部函数 */
+__attribute__((naked, section(".text.entry"), used))
+void vm_entry_token(void) {
+    __asm__ volatile(
+        "mov x9, x29\n"                /* 暂存 caller FP */
+        "mov x10, x30\n"               /* 暂存 caller LR */
+        "stp x29, x30, [sp, #-96]!\n"  /* 保存 FP/LR + 分配 96B 栈帧 */
+        "mov x29, sp\n"                /* 建立栈帧 */
+        "stp x0, x1, [sp, #16]\n"      /* args[0..1] */
+        "stp x2, x3, [sp, #32]\n"      /* args[2..3] */
+        "stp x4, x5, [sp, #48]\n"      /* args[4..5] */
+        "stp x6, x7, [sp, #64]\n"      /* args[6..7] */
+        "stp x9, x10, [sp, #80]\n"     /* args[8]=callerFP, args[9]=callerLR */
+        "add x0, sp, #16\n"            /* X0 = args 指针 (10 个 u64) */
+        "mov w1, w16\n"                /* X1 = token (从 X16/IP0 传入) */
+        "bl vm_entry_token_inner\n"     /* 调用 C 内部函数 */
+        "ldp x29, x30, [sp], #96\n"    /* 恢复 FP/LR + 释放栈帧 */
+        "ret\n"                         /* 返回 (结果在 X0) */
+    );
+}
+
+#endif /* VM_TOKEN_ENTRY */
+
+/* ---- vm_entry 实现 ---- */
 __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
                                                      u32 bc_len, u8 xor_key) {
   u64 ret = 0;
@@ -143,6 +218,88 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
     }
   }
 
+/* ---- OpcodeCryptor 解密宏 (两种模式共用) ---- */
+#define OC_DECRYPT(pc, key) ((u8)((key) ^ ((pc) * 0x9E3779B9u)))
+
+#ifdef VM_INDIRECT_DISPATCH
+  /* ================================================================
+   * 间接 Dispatch 模式: 相对偏移跳转表 + 函数指针间接调用
+   *
+   * 替代 computed goto，使 IDA Pro 等静态分析工具
+   * 无法追踪所有 handler 目标地址。
+   * ================================================================ */
+
+  /* ---- 运行时初始化跳转表 (栈上分配, RX blob 不可写 BSS) ---- */
+  vm_handler_fn vm_jump_table[256];
+  vm_init_jump_table(vm_jump_table);
+
+  /* ---- PC 初始化: reverse 模式从 bc_len 开始 ---- */
+  if (vm.reverse) {
+    vm.pc = vm.bc_len;
+  }
+
+  /* ---- 间接 Dispatch 主循环 ---- */
+  for (;;) {
+    /* -- 反向/正向 PC 定位 -- */
+    if (vm.reverse) {
+      if (__builtin_expect((i64)vm.pc <= 0, 0))
+        break;
+      vm.pc--;
+      if (__builtin_expect(vm.pc >= vm.bc_len, 0))
+        break;
+      u8 _sz = vm.bc[vm.pc];
+      if (__builtin_expect(_sz > vm.pc, 0))
+        break;
+      vm.pc -= _sz;
+    } else {
+      if (__builtin_expect(vm.pc >= vm.bc_len, 0))
+        break;
+    }
+
+    /* -- OpcodeCryptor 解密 -- */
+    u8 _raw_op = vm.bc[vm.pc];
+    u8 _dec_op = _raw_op ^ OC_DECRYPT(vm.pc, vm.oc_key);
+
+    /* -- 指令大小校验 -- */
+    u8 _isz = vm_insn_size(_dec_op);
+    if (__builtin_expect(_isz == 0 || vm.pc + _isz > vm.bc_len, 0))
+      break;
+
+    /* -- 特殊处理: HALT / RET (不经过跳转表) -- */
+    if (_dec_op == OP_HALT) {
+      ret = vm.R[0];
+      goto cleanup;
+    }
+    if (_dec_op == OP_RET) {
+      u8 _r = vm.bc[vm.pc + 1];
+      ret = vm.R[_r & 31];
+      goto cleanup;
+    }
+
+    /* -- 间接 Dispatch: 直接从跳转表取函数指针调用 -- */
+    vm_handler_fn _handler = vm_jump_table[_dec_op];
+    u32 _step = _handler(&vm);
+
+    /* -- 检查 HALT 哨兵 (wrap_unknown 等返回) -- */
+    if (__builtin_expect(_step == VM_STEP_HALT, 0)) {
+      ret = vm.R[0];
+      goto cleanup;
+    }
+
+    /* -- 推进 PC -- */
+    /* _step == 0: 分支 handler 已直接设置 pc, 不推进 */
+    /* _step > 0 且非 reverse: 正常推进 */
+    if (_step > 0 && !vm.reverse) {
+      vm.pc += _step;
+    }
+  }
+
+#else /* !VM_INDIRECT_DISPATCH */
+
+  /* ================================================================
+   * 原始 Computed Goto 模式 (保持不变)
+   * ================================================================ */
+
   /* ---- 3. Computed goto 分发表 (替代 switch-case, ~20-30% 加速) ---- */
   /* GCC 扩展: &&label 获取标签地址, goto *ptr 跳转 */
   /* 注: 使用循环填充默认值避免 [0...255] 范围初始化生成隐式 memcpy */
@@ -164,6 +321,8 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
   dtab[OP_STORE8] = &&L_STORE8;
   dtab[OP_STORE32] = &&L_STORE32;
   dtab[OP_STORE64] = &&L_STORE64;
+  dtab[OP_LOAD16] = &&L_LOAD16;
+  dtab[OP_STORE16] = &&L_STORE16;
   /* ALU 三寄存器 */
   dtab[OP_ADD] = &&L_ADD;
   dtab[OP_SUB] = &&L_SUB;
@@ -211,10 +370,6 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
   /* SIMD */
   dtab[OP_VLD16] = &&L_VLD16;
   dtab[OP_VST16] = &&L_VST16;
-
-/* 分发宏 — OpcodeCryptor: 实时解密 opcode 字节 */
-/* PC 反向遍历: reverse 模式下 pc 从 bc_len 递减 */
-#define OC_DECRYPT(pc, key) ((u8)((key) ^ ((pc) * 0x9E3779B9u)))
 
 /* 反向模式: pc 指向指令末尾的 size 标记之后
  * 步骤: pc--; size = bc[pc]; pc -= size; 现在 pc 指向指令起始 */
@@ -293,6 +448,10 @@ L_STORE32:
   NEXT(h_store32(&vm));
 L_STORE64:
   NEXT(h_store64(&vm));
+L_LOAD16:
+  NEXT(h_load16(&vm));
+L_STORE16:
+  NEXT(h_store16(&vm));
 
 /* ---- ALU 三寄存器 ---- */
 L_ADD:
@@ -408,12 +567,14 @@ L_VST16:
 L_UNKNOWN:
   ret = vm.R[0]; /* fall through to cleanup */
 
+#undef DISPATCH
+#undef NEXT
+#undef NEXT0
+
+#endif /* VM_INDIRECT_DISPATCH */
+
   /* ---- 统一退出: 释放 mmap 防止泄漏 ---- */
 cleanup:
   sys_munmap(bc_buf, alloc_size);
   return ret;
-
-#undef DISPATCH
-#undef NEXT
-#undef NEXT0
 }

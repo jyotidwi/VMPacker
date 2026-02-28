@@ -53,6 +53,17 @@ static inline u32 h_load64(vm_ctx_t *vm) {
   return 5;
 }
 
+/* LDRH Wd, [Xn, #off16] */
+static inline u32 h_load16(vm_ctx_t *vm) {
+  u8 d = vm->bc[vm->pc + 1], n = vm->bc[vm->pc + 2];
+  i16 off = (i16)rd16(&vm->bc[vm->pc + 3]);
+  u64 addr = vm->R[n & 31] + off;
+  if ((n & 31) == 31 && !VM_STK_CHECK(vm, addr, 2))
+    return 5; /* SP 越界, 静默跳过 */
+  vm->R[d & 31] = *(u16 *)addr;
+  return 5;
+}
+
 /* ---- 存储 (STR) ---- */
 
 /* STRB Wn, [Xb, #off16] */
@@ -63,6 +74,17 @@ static inline u32 h_store8(vm_ctx_t *vm) {
   if ((b & 31) == 31 && !VM_STK_CHECK(vm, addr, 1))
     return 5;
   *(u8 *)addr = (u8)vm->R[n & 31];
+  return 5;
+}
+
+/* STRH Wn, [Xb, #off16] */
+static inline u32 h_store16(vm_ctx_t *vm) {
+  u8 b = vm->bc[vm->pc + 1], n = vm->bc[vm->pc + 2];
+  i16 off = (i16)rd16(&vm->bc[vm->pc + 3]);
+  u64 addr = vm->R[b & 31] + off;
+  if ((b & 31) == 31 && !VM_STK_CHECK(vm, addr, 2))
+    return 5;
+  *(u16 *)addr = (u16)vm->R[n & 31];
   return 5;
 }
 

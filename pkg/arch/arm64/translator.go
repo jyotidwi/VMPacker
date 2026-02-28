@@ -236,8 +236,30 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 			if err != nil {
 				return 0, err
 			}
-			t.emit(vm.OpCmpImm, rn)
-			t.emitU32(uint32(inst.Imm))
+			imm64 := uint64(inst.Imm)
+			if op == ADDS_IMM {
+				// CMN Xn, #imm = ADDS XZR, Xn, #imm → flags based on Xn + imm
+				if imm64 > 0xFFFFFFFF {
+					t.emit(vm.OpMovImm, 15)
+					t.emitU64(imm64)
+					t.emit(vm.OpAdd, 15, rn, 15)
+				} else {
+					t.emit(vm.OpAddImm, 15, rn)
+					t.emitU32(uint32(imm64))
+				}
+				t.emit(vm.OpCmpImm, 15)
+				t.emitU32(0)
+			} else {
+				// CMP Xn, #imm = SUBS XZR, Xn, #imm → flags based on Xn - imm
+				if imm64 > 0xFFFFFFFF {
+					t.emit(vm.OpMovImm, 15)
+					t.emitU64(imm64)
+					t.emit(vm.OpCmp, rn, 15)
+				} else {
+					t.emit(vm.OpCmpImm, rn)
+					t.emitU32(uint32(imm64))
+				}
+			}
 			return 0, nil
 		}
 		if op == ADDS_IMM {
@@ -254,8 +276,15 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 			if err != nil {
 				return 0, err
 			}
-			t.emit(vm.OpAndImm, 15, rn)
-			t.emitU32(uint32(inst.Imm))
+			imm64 := uint64(inst.Imm)
+			if imm64 > 0xFFFFFFFF {
+				t.emit(vm.OpMovImm, 15)
+				t.emitU64(imm64)
+				t.emit(vm.OpAnd, 15, rn, 15)
+			} else {
+				t.emit(vm.OpAndImm, 15, rn)
+				t.emitU32(uint32(imm64))
+			}
 			t.emit(vm.OpCmpImm, 15)
 			t.emitU32(0)
 			return 0, nil
@@ -297,6 +326,26 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 		return 0, t.trAluReg(inst, vm.OpOr)
 	case EOR_REG:
 		return 0, t.trAluReg(inst, vm.OpXor)
+	case MVN:
+		rd, err := t.mapReg(inst.Rd)
+		if err != nil {
+			return 0, err
+		}
+		rm, err := t.mapReg(inst.Rm)
+		if err != nil {
+			return 0, err
+		}
+		if inst.Shift != 0 {
+			t.emit(vm.OpShlImm, 15, rm)
+			t.emitU32(uint32(inst.Shift))
+			t.emit(vm.OpNot, rd, 15)
+		} else {
+			t.emit(vm.OpNot, rd, rm)
+		}
+		if !inst.SF {
+			t.trunc32(rd)
+		}
+		return 0, nil
 	case MUL:
 		return 0, t.trAluReg(inst, vm.OpMul)
 	case LSL_REG:
@@ -392,9 +441,9 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 	case CSNEG:
 		return 0, t.trCSEL(inst)
 	case MADD:
-		return 0, fmt.Errorf("MADD (Ra≠XZR) 暂不支持，无法保证正确性")
+		return 0, t.trMADD(inst, false)
 	case MSUB:
-		return 0, fmt.Errorf("MSUB (Ra≠XZR) 暂不支持，无法保证正确性")
+		return 0, t.trMADD(inst, true)
 
 	// ========== 寄存器偏移加载/存储 ==========
 	case LDR_REG, LDRB_REG:

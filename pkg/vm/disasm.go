@@ -30,6 +30,8 @@ var opTable = map[byte]opInfo{
 	OpStore8:  {"STORE8", 5},
 	OpStore32: {"STORE32", 5},
 	OpStore64: {"STORE64", 5},
+	OpLoad16:  {"LOAD16", 5},
+	OpStore16: {"STORE16", 5},
 
 	OpAdd: {"ADD", 4}, // op + d + a + b
 	OpSub: {"SUB", 4},
@@ -133,18 +135,18 @@ func DisasmOne(code []byte, pc int) (string, int) {
 	case OpMovReg:
 		return fmt.Sprintf("%04X: MOV R%d, R%d", pc, code[pc+1], code[pc+2]), 3
 
-	case OpLoad8, OpLoad32, OpLoad64:
+	case OpLoad8, OpLoad16, OpLoad32, OpLoad64:
 		dst := code[pc+1]
 		base := code[pc+2]
 		imm := binary.LittleEndian.Uint16(code[pc+3:])
-		width := map[byte]string{OpLoad8: "8", OpLoad32: "32", OpLoad64: "64"}[op]
+		width := map[byte]string{OpLoad8: "8", OpLoad16: "16", OpLoad32: "32", OpLoad64: "64"}[op]
 		return fmt.Sprintf("%04X: LOAD%s R%d, [R%d + %d]", pc, width, dst, base, imm), 5
 
-	case OpStore8, OpStore32, OpStore64:
+	case OpStore8, OpStore16, OpStore32, OpStore64:
 		base := code[pc+1]
 		src := code[pc+2]
 		imm := binary.LittleEndian.Uint16(code[pc+3:])
-		width := map[byte]string{OpStore8: "8", OpStore32: "32", OpStore64: "64"}[op]
+		width := map[byte]string{OpStore8: "8", OpStore16: "16", OpStore32: "32", OpStore64: "64"}[op]
 		return fmt.Sprintf("%04X: STORE%s [R%d + %d], R%d", pc, width, base, imm, src), 5
 
 	case OpAdd, OpSub, OpMul, OpXor, OpAnd, OpOr, OpShl, OpShr, OpAsr, OpRor:

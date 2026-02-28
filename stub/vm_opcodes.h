@@ -28,6 +28,8 @@
                          */
 #define OP_STORE32 0x19 /* STR  Wn, [Xb, #off16]        5B */
 #define OP_STORE64 0x2A /* STR  Xn, [Xb, #off16]        5B */
+#define OP_LOAD16 0xE7  /* LDRH Xd, [Xn, #off16]        5B */
+#define OP_STORE16 0xE8 /* STRH Xn, [Xb, #off16]        5B */
 
 /* ---- 算术/逻辑 (三寄存器) ---- */
 #define OP_ADD 0x37 /* ADD  Xd, Xn, Xm              4B: [op][d][n][m] */

@@ -3,6 +3,10 @@ SECTIONS {
   . = 0;
   .text : {
     *(.text.entry)
+    *(.text.vm_alu)
+    *(.text.vm_mem)
+    *(.text.vm_branch)
+    *(.text.vm_system)
     *(.text*)
     *(.rodata*)
     *(.data*)

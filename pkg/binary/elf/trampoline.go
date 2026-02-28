@@ -91,6 +91,33 @@ func BuildTrampoline(funcAddr, interpVA, bcVA uint64, bcLen uint32, xorKey byte)
 	return buf.Bytes()
 }
 
+// BuildTokenTrampoline 构造 Token 化入口跳板（3 条 ARM64 指令, 12 字节）
+//
+//	MOV  W16, #token_lo16          ; token 低 16 位 → W16
+//	MOVK W16, #token_hi16, LSL#16  ; token 高 16 位合并
+//	B    vm_entry_token             ; 跳转到 Token 入口
+//
+// X16 (IP0) 传递 token，X0-X7 保持调用方原始参数不变。
+func BuildTokenTrampoline(funcAddr, vmEntryTokenVA uint64, token uint32) []byte {
+	var buf bytes.Buffer
+
+	// MOV W16, #token_lo16  (MOVZ W16, sf=0, hw=0)
+	lo16 := token & 0xFFFF
+	writeU32(&buf, 0x52800010|uint32(lo16)<<5)
+
+	// MOVK W16, #token_hi16, LSL#16  (MOVK W16, sf=0, hw=1)
+	hi16 := (token >> 16) & 0xFFFF
+	writeU32(&buf, 0x72A00010|uint32(hi16)<<5)
+
+	// B vm_entry_token  (PC = funcAddr + 8)
+	bPC := funcAddr + 8
+	bOffset := int64(vmEntryTokenVA) - int64(bPC)
+	bImm26 := (bOffset >> 2) & 0x03FFFFFF
+	writeU32(&buf, 0x14000000|uint32(bImm26))
+
+	return buf.Bytes()
+}
+
 // ============================================================
 // ELF64 二进制结构读写
 // ============================================================

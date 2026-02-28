@@ -172,7 +172,7 @@ func (t *Translator) trCSEL(inst vm.Instruction) error {
 	case COND_PL:
 		vmOp = vm.OpJge // PL: N==0 → FL_SIGN not set
 	default:
-		vmOp = vm.OpJe
+		return fmt.Errorf("CSEL: 不支持的条件码 0x%X", inst.Cond)
 	}
 
 	t.emit(vmOp)

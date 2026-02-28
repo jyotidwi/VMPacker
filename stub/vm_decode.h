@@ -31,8 +31,8 @@ static inline u8 vm_insn_size(u8 op) {
   case OP_ADD: case OP_SUB: case OP_MUL: case OP_XOR:
   case OP_AND: case OP_OR:  case OP_SHL: case OP_SHR:
   case OP_ASR: case OP_ROR:                            return 4;
-  case OP_LOAD8: case OP_LOAD32: case OP_LOAD64:
-  case OP_STORE8: case OP_STORE32: case OP_STORE64:
+  case OP_LOAD8: case OP_LOAD16: case OP_LOAD32: case OP_LOAD64:
+  case OP_STORE8: case OP_STORE16: case OP_STORE32: case OP_STORE64:
   case OP_JMP: case OP_JE: case OP_JNE: case OP_JL:
   case OP_JGE: case OP_JGT: case OP_JLE: case OP_JB:
   case OP_JAE: case OP_JBE: case OP_JA:               return 5;

@@ -84,7 +84,7 @@ var dpImmPatterns = []InstrPattern{
 		// ANDS(imm) opc=11 → 需要设置 flags (TST = ANDS XZR, Xn, #imm)
 		Name: "ANDS_IMM", Mask: 0x7F800000, Value: 0x72000000, Op: ANDS_IMM,
 		Fields: []FieldDef{fSF, {Name: "N", Hi: 22, Lo: 22}, {Name: "immr", Hi: 21, Lo: 16}, {Name: "imms", Hi: 15, Lo: 10}, fRn, fRd},
-		Post:   postBitmaskImm,
+		Post:   postBitmaskImmANDS,
 	},
 
 	// ---- Move wide (immediate) ----
@@ -165,6 +165,7 @@ var dpImmPatterns = []InstrPattern{
 }
 
 // postBitmaskImm 逻辑立即数的 bitmask 解码
+// 逻辑立即数指令中 Rn=31 表示 XZR（零寄存器），不是 SP
 func postBitmaskImm(f map[string]int64, inst *vm.Instruction) {
 	n := uint32(f["N"])
 	immr := uint32(f["immr"])
@@ -175,4 +176,20 @@ func postBitmaskImm(f map[string]int64, inst *vm.Instruction) {
 		return
 	}
 	inst.Imm = int64(imm)
+	xzrReplace(&inst.Rn) // Rn=31 → XZR (逻辑立即数组中 Rn 始终是 XZR 而非 SP)
+}
+
+// postBitmaskImmANDS ANDS(imm) 专用：Rn=31→XZR, Rd=31→XZR (TST alias)
+func postBitmaskImmANDS(f map[string]int64, inst *vm.Instruction) {
+	n := uint32(f["N"])
+	immr := uint32(f["immr"])
+	imms := uint32(f["imms"])
+	imm, ok := decodeBitmaskImm(n, immr, imms, inst.SF)
+	if !ok {
+		inst.Op = int(UNSUPPORTED)
+		return
+	}
+	inst.Imm = int64(imm)
+	xzrReplace(&inst.Rn) // Rn=31 → XZR
+	xzrReplace(&inst.Rd) // Rd=31 → XZR (TST = ANDS XZR, Xn, #imm)
 }

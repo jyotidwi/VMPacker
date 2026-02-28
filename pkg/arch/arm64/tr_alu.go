@@ -1,6 +1,8 @@
 package arm64
 
 import (
+	"fmt"
+
 	"github.com/vmpacker/pkg/vm"
 )
 
@@ -21,8 +23,22 @@ func (t *Translator) trAluImmFlags(inst vm.Instruction, vmOp byte, setFlags bool
 	if err != nil {
 		return err
 	}
-	t.emit(vmOp, rd, rn)
-	t.emitU32(uint32(inst.Imm))
+
+	imm64 := uint64(inst.Imm)
+	if imm64 > 0xFFFFFFFF {
+		// 64-bit 立即数超出 u32 范围 — 用 MOV_IMM64 加载到 R15，再用 3-reg 指令
+		reg3Op := immToReg3Op(vmOp)
+		if reg3Op == 0 {
+			return fmt.Errorf("无法将 _IMM opcode 0x%02X 映射到 3-reg 版本", vmOp)
+		}
+		t.emit(vm.OpMovImm, 15)
+		t.emitU64(imm64)
+		t.emit(reg3Op, rd, rn, 15)
+	} else {
+		t.emit(vmOp, rd, rn)
+		t.emitU32(uint32(imm64))
+	}
+
 	if setFlags {
 		// ADDS/SUBS: 在 trunc32 之前比较，确保 N flag 正确
 		t.emit(vm.OpCmpImm, rd)
@@ -32,6 +48,32 @@ func (t *Translator) trAluImmFlags(inst vm.Instruction, vmOp byte, setFlags bool
 		t.trunc32(rd)
 	}
 	return nil
+}
+
+// immToReg3Op 将 _IMM opcode 映射到对应的 3-register opcode
+func immToReg3Op(immOp byte) byte {
+	switch immOp {
+	case vm.OpAddImm:
+		return vm.OpAdd
+	case vm.OpSubImm:
+		return vm.OpSub
+	case vm.OpAndImm:
+		return vm.OpAnd
+	case vm.OpOrImm:
+		return vm.OpOr
+	case vm.OpXorImm:
+		return vm.OpXor
+	case vm.OpMulImm:
+		return vm.OpMul
+	case vm.OpShlImm:
+		return vm.OpShl
+	case vm.OpShrImm:
+		return vm.OpShr
+	case vm.OpAsrImm:
+		return vm.OpAsr
+	default:
+		return 0
+	}
 }
 
 func (t *Translator) trAluReg(inst vm.Instruction, vmOp byte) error {
@@ -146,6 +188,53 @@ func (t *Translator) trMovN(inst vm.Instruction) error {
 	} else {
 		t.emit(vm.OpMovImm, rd)
 		t.emitU64(val)
+	}
+	return nil
+}
+
+// trMADD 翻译 MADD/MSUB
+// MADD: Rd = Ra + Rn * Rm  (isSub=false)
+// MSUB: Rd = Ra - Rn * Rm  (isSub=true)
+// Ra 从 inst.Raw bits[14:10] 提取
+func (t *Translator) trMADD(inst vm.Instruction, isSub bool) error {
+	rd, err := t.mapReg(inst.Rd)
+	if err != nil {
+		return err
+	}
+	rn, err := t.mapReg(inst.Rn)
+	if err != nil {
+		return err
+	}
+	rm, err := t.mapReg(inst.Rm)
+	if err != nil {
+		return err
+	}
+	// Ra = bits[14:10]
+	raIdx := int((inst.Raw >> 10) & 0x1F)
+	if raIdx == 31 {
+		raIdx = vm.REG_XZR
+	}
+	ra, err := t.mapReg(raIdx)
+	if err != nil {
+		return err
+	}
+
+	// 如果 Ra 是 XZR，先清零
+	if raIdx == vm.REG_XZR {
+		t.emit(vm.OpMovImm32, ra)
+		t.emitU32(0)
+	}
+
+	// R15 = Rn * Rm
+	t.emit(vm.OpMul, 15, rn, rm)
+	// Rd = Ra +/- R15
+	if isSub {
+		t.emit(vm.OpSub, rd, ra, 15)
+	} else {
+		t.emit(vm.OpAdd, rd, ra, 15)
+	}
+	if !inst.SF {
+		t.trunc32(rd)
 	}
 	return nil
 }

@@ -26,6 +26,8 @@ const (
 	OpStore8   byte = 0xD2 // *(u8*)(Rx+i16) = Ry   5B: [op][base][src][imm16]
 	OpStore32  byte = 0x19 // *(u32*)(Rx+i16) = Ry  5B: [op][base][src][imm16]
 	OpStore64  byte = 0x2A // *(u64*)(Rx+i16) = Ry  5B: [op][base][src][imm16]
+	OpLoad16   byte = 0xE7 // Rx = *(u16*)(Ry+i16)  5B: [op][dst][base][imm16]
+	OpStore16  byte = 0xE8 // *(u16*)(Rx+i16) = Ry  5B: [op][base][src][imm16]
 
 	// 算术运算 — 三地址: [op][d][a][b] = 4B
 	OpAdd byte = 0x37
