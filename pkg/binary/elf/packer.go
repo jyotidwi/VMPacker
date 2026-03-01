@@ -137,16 +137,57 @@ func (p *Packer) FindFunction(f *elf.File, name string) (*vm.FuncInfo, error) {
 
 // FindFunctionByAddr 通过地址查找函数
 func (p *Packer) FindFunctionByAddr(f *elf.File, spec AddrSpec) (*vm.FuncInfo, error) {
-	// 在 .text 段中定位
+	// 优先在 .text 段中定位
 	textSec := f.Section(".text")
-	if textSec == nil {
-		return nil, fmt.Errorf(".text section not found")
+
+	var secName string
+	var secAddr, secOffset, secSize uint64
+	var secData []byte
+
+	if textSec != nil {
+		secName = ".text"
+		secAddr = textSec.Addr
+		secOffset = textSec.Offset
+		secSize = textSec.Size
+		d, err := textSec.Data()
+		if err != nil {
+			return nil, fmt.Errorf("reading .text failed: %v", err)
+		}
+		secData = d
+	} else {
+		// Fallback: 在可执行 LOAD segment 中查找
+		found := false
+		for _, prog := range f.Progs {
+			if prog.Type != elf.PT_LOAD {
+				continue
+			}
+			if prog.Flags&elf.PF_X == 0 {
+				continue
+			}
+			segEnd := prog.Vaddr + prog.Memsz
+			if spec.Addr >= prog.Vaddr && spec.Addr < segEnd {
+				secName = "__LOAD_X"
+				secAddr = prog.Vaddr
+				secOffset = prog.Off
+				secSize = prog.Filesz
+				d := make([]byte, prog.Filesz)
+				if _, err := prog.ReadAt(d, 0); err != nil {
+					return nil, fmt.Errorf("reading LOAD segment failed: %v", err)
+				}
+				secData = d
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("address 0x%X not in any executable segment", spec.Addr)
+		}
 	}
 
-	// 确认地址在 .text 范围内
-	if spec.Addr < textSec.Addr || spec.Addr >= textSec.Addr+textSec.Size {
-		return nil, fmt.Errorf("address 0x%X not in .text (0x%X-0x%X)",
-			spec.Addr, textSec.Addr, textSec.Addr+textSec.Size)
+	// 确认地址在范围内
+	if spec.Addr < secAddr || spec.Addr >= secAddr+secSize {
+		return nil, fmt.Errorf("address 0x%X not in %s (0x%X-0x%X)",
+			spec.Addr, secName, secAddr, secAddr+secSize)
 	}
 
 	var size uint64
@@ -155,14 +196,10 @@ func (p *Packer) FindFunctionByAddr(f *elf.File, spec AddrSpec) (*vm.FuncInfo, e
 		size = spec.End - spec.Addr
 	} else {
 		// 自动检测: 扫描到 RET (0xD65F03C0) 指令
-		data, err := textSec.Data()
-		if err != nil {
-			return nil, fmt.Errorf("reading .text failed: %v", err)
-		}
-		startOff := spec.Addr - textSec.Addr
+		startOff := spec.Addr - secAddr
 		found := false
-		for i := startOff; i+4 <= uint64(len(data)); i += 4 {
-			inst := binary.LittleEndian.Uint32(data[i:])
+		for i := startOff; i+4 <= uint64(len(secData)); i += 4 {
+			inst := binary.LittleEndian.Uint32(secData[i:])
 			if inst == 0xD65F03C0 { // RET
 				size = i + 4 - startOff
 				found = true
@@ -178,8 +215,8 @@ func (p *Packer) FindFunctionByAddr(f *elf.File, spec AddrSpec) (*vm.FuncInfo, e
 		Name:    spec.Name,
 		Addr:    spec.Addr,
 		Size:    size,
-		Section: ".text",
-		Offset:  textSec.Offset + (spec.Addr - textSec.Addr),
+		Section: secName,
+		Offset:  secOffset + (spec.Addr - secAddr),
 	}
 	return fi, nil
 }
@@ -189,6 +226,26 @@ func (p *Packer) ExtractFuncCode(f *elf.File, fi *vm.FuncInfo) ([]byte, error) {
 	if fi.Size == 0 {
 		return nil, fmt.Errorf("function %s has zero size", fi.Name)
 	}
+
+	if fi.Section == "__LOAD_X" {
+		// 无 section headers: 从 LOAD segment 读取
+		for _, prog := range f.Progs {
+			if prog.Type != elf.PT_LOAD || prog.Flags&elf.PF_X == 0 {
+				continue
+			}
+			segEnd := prog.Vaddr + prog.Filesz
+			if fi.Addr >= prog.Vaddr && fi.Addr+fi.Size <= segEnd {
+				localOff := fi.Addr - prog.Vaddr
+				code := make([]byte, fi.Size)
+				if _, err := prog.ReadAt(code, int64(localOff)); err != nil {
+					return nil, fmt.Errorf("reading LOAD segment failed: %v", err)
+				}
+				return code, nil
+			}
+		}
+		return nil, fmt.Errorf("function %s (0x%X) not in any LOAD segment", fi.Name, fi.Addr)
+	}
+
 	section := f.Section(fi.Section)
 	if section == nil {
 		return nil, fmt.Errorf("section %s not found", fi.Section)
@@ -594,7 +651,7 @@ func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 	var entryOff, tokenEntryOff, tokenTableVAOff uint64
 	var interpCode []byte
 
-	if p.tokenEntry {
+	if true { /* TOKEN_ONLY: 始终使用 Token 模式 */
 		// Token 模式: 24 字节扩展头
 		if len(p.interpBlob) < 24 {
 			return fmt.Errorf("token mode requires extended blob header (24 bytes), got %d", len(p.interpBlob))
@@ -609,6 +666,8 @@ func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 		if tokenTableVAOff == 0 {
 			return fmt.Errorf("_token_table_va not found in blob (compile with -DVM_TOKEN_ENTRY)")
 		}
+	}
+	/* STANDARD_MODE_DISABLED: Standard header 读取已禁用
 	} else {
 		// 标准模式: blob 始终有 24 字节头 (vm_entry + vm_entry_token + _token_table_va)
 		// 即使不使用 token 模式，也需要跳过完整头部
@@ -620,6 +679,7 @@ func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 			interpCode = p.interpBlob[8:]
 		}
 	}
+	STANDARD_MODE_DISABLED */
 
 	// 1. 构造 payload: [interpCode][bc0][pad][bc1][pad][...]
 	payload := make([]byte, 0, len(interpCode)+1024)
@@ -679,7 +739,7 @@ func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 			fb.FI.Name, bcVA, records[i].bcLen)
 	}
 
-	// 3. 找到 PT_NOTE 段并劫持
+	// 3. 找到 PT_NOTE 段并劫持为 PT_LOAD
 	noteIdx := -1
 	for i := 0; i < int(ehdr.Phnum); i++ {
 		phOff := ehdr.Phoff + uint64(i)*uint64(ehdr.Phentsize)
@@ -762,7 +822,7 @@ func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 	}
 
 	// 5. 为每个函数写跳板 + 销毁原始代码
-	if p.tokenEntry {
+	if true { /* TOKEN_ONLY: 始终使用 Token 跳板 */
 		// ---- Token 模式 ----
 
 		// 5a. 构建 token_desc_t 描述符表
@@ -834,6 +894,8 @@ func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 			fmt.Printf("    [TOKEN] %s: func_id=%d, token=0x%08X, trampoline=%d bytes\n",
 				fb.FI.Name, funcID, token, len(trampoline))
 		}
+	}
+	/* STANDARD_MODE_DISABLED: Token 模式为唯一入口，Standard 模式已禁用
 	} else {
 		// ---- 标准模式 ----
 		for i, fb := range funcs {
@@ -869,6 +931,7 @@ func (p *Packer) injectVMPBatch(funcs []FuncBytecode) error {
 			}
 		}
 	}
+	STANDARD_MODE_DISABLED */
 
 	return nil
 }

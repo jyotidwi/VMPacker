@@ -1,0 +1,122 @@
+========================================
+  vmpacker - ARM64 ELF VMP ??????
+========================================
+[*] ???: demo\demo_split_packed
+[*] ???: demo\vmp_phA_dbg
+[*] ??????: []
+
+[*] ELF: EM_AARCH64, Type: ET_EXEC
+[*] VM interp blob: 7744 bytes
+
+[*] Processing: stub_phase_A
+    Addr: 0x100013C0, Size: 256 bytes, Section: __LOAD_X
+    Instructions: 64
+    --- Disasm ---
+    0x0000: STP          raw=0xA9BD7BFD
+    0x0004: MOVZ         raw=0x52886641
+    0x0008: MOVK         raw=0x72A86A41
+    0x000C: ADD(imm)     raw=0x910003FD
+    0x0010: STR(imm)     raw=0xF9000FF4
+    0x0014: LDR(imm)     raw=0xF9400014
+    0x0018: STP          raw=0xA9017C1F
+    0x001C: STP          raw=0xA9027C1F
+    0x0020: STR(imm)     raw=0xF900181F
+    0x0024: STR(imm)     raw=0xB900381F
+    0x0028: STR(imm)     raw=0xF9002014
+    0x002C: LDR(imm)     raw=0xB9400282
+    0x0030: SUBS(reg)    raw=0x6B01005F
+    0x0034: B.cond       raw=0x54000080
+    0x0038: LDR(imm)     raw=0xF9400FF4
+    0x003C: LDP          raw=0xA8C37BFD
+    0x0040: RET          raw=0xD65F03C0
+    0x0044: LDRH(imm)    raw=0x79401A82
+    0x0048: MOVZ         raw=0x52800381
+    0x004C: STR(imm)     raw=0xF9000BB3
+    0x0050: ORR(reg)     raw=0xAA0003F3
+    0x0054: LDRH(imm)    raw=0x79401E80
+    0x0058: ADD(reg)     raw=0x0B000042
+    0x005C: STR(imm)     raw=0xF9000E74
+    0x0060: ORR(reg)     raw=0xAA1403E0
+    0x0064: ADD(reg)     raw=0x0B020442
+    0x0068: UBFM         raw=0x531E7442
+    0x006C: ADD(imm)     raw=0x11008042
+    0x0070: STR(imm)     raw=0xB9003A62
+    0x0074: ADD(ext)     raw=0x8B22C282
+    0x0078: STR(imm)     raw=0xF9002262
+    0x007C: BL           raw=0x94000237
+    0x0080: LDR(imm)     raw=0xB9401E81
+    0x0084: STR(imm)     raw=0xF90013B5
+    0x0088: SUBS(reg)    raw=0x6B00003F
+    0x008C: B.cond       raw=0x54000361
+    0x0090: ADRP         raw=0x90000015
+    0x0094: LDR(imm)     raw=0xB9400681
+    0x0098: LDR(imm)     raw=0xB94D16A0
+    0x009C: SUBS(reg)    raw=0x6B00003F
+    0x00A0: B.cond       raw=0x54000060
+    0x00A4: MOVZ         raw=0x52800020
+    0x00A8: STR(imm)     raw=0xB9001260
+    0x00AC: LDR(imm)     raw=0xB94D16A0
+    0x00B0: TBNZ         raw=0x370801A0
+    0x00B4: LDR(imm)     raw=0xB94D16A0
+    0x00B8: TBNZ         raw=0x371800C0
+    0x00BC: LDR(imm)     raw=0xF9400BB3
+    0x00C0: LDR(imm)     raw=0xF94013B5
+    0x00C4: LDR(imm)     raw=0xF9400FF4
+    0x00C8: LDP          raw=0xA8C37BFD
+    0x00CC: RET          raw=0xD65F03C0
+    0x00D0: BL           raw=0x94000492
+    0x00D4: LDR(imm)     raw=0xF94013B5
+    0x00D8: STR(imm)     raw=0xF9001260
+    0x00DC: LDR(imm)     raw=0xF9400BB3
+    0x00E0: B            raw=0x17FFFFD6
+    0x00E4: BL           raw=0x94000415
+    0x00E8: TBZ          raw=0x36FFFE60
+    0x00EC: MOVZ         raw=0x52800020
+    0x00F0: STR(imm)     raw=0xB9001660
+    0x00F4: B            raw=0x17FFFFF0
+    0x00F8: BL           raw=0x97FFFF10
+    0x00FC: NOP          raw=0xD503201F
+    --- End ---
+    Translated: 64/64
+    Bytecode: 999 bytes
+    [+] Debug: demo\vmp_phA_dbg.debug.txt
+      [REMAP] pc=0x000E op=0x44 target: 0x0154 ??0x008C
+      [REMAP] pc=0x0021 op=0x16 target: 0x0154 ??0x008C
+      [REMAP] pc=0x0033 op=0x44 target: 0x0079 ??0x018F
+      [REMAP] pc=0x007E op=0x17 target: 0x0182 ??0x0055
+      [REMAP] pc=0x008C op=0x17 target: 0x019F ??0x0033
+      [REMAP] pc=0x00A7 op=0x58 target: 0x0148 ??0x009A
+      [REMAP] pc=0x00C8 op=0xBB target: 0x01BF ??0x000E
+      [REMAP] pc=0x018F op=0x58 target: 0x0091 ??0x0172
+    [REV] reversed: 84 insts, newCodeLen=542 (was 542), offsetMap entries=84
+    [OC] oc_key=0x4A57E849, codeLen=542, mapCount=65, reverseOff=1062, keyOff=1063
+
+[*] Injecting 1 functions...
+    Payload at file offset: 0x46000, VA: 0x10050000, size: 8804
+    VM interp VA: 0x10050000
+    [stub_phase_A] bytecode VA: 0x10051E28, len: 1083
+    PT_NOTE[1] -> PT_LOAD RX: off=0x46000 va=0x10050000 sz=0x2264
+    [stub_phase_A] Trampoline (72 bytes) + Garbage (184 bytes):
+      +00: 0xAA1D03E9
+      +04: 0xAA1E03EA
+      +08: 0xA9BA7BFD
+      +0C: 0x910003FD
+      +10: 0xA90107E0
+      +14: 0xA9020FE2
+      +18: 0xA90317E4
+      +1C: 0xA9041FE6
+      +20: 0xA9052BE9
+      +24: 0x910043E0
+      +28: 0xD283C501
+      +2C: 0xF2A200A1
+      +30: 0xF2C00001
+      +34: 0xD2808762
+      +38: 0xD28014A3
+      +3C: 0x94013B01
+      +40: 0xA8C67BFD
+      +44: 0xD65F03C0
+    [+] stub_phase_A VMP protected
+
+[+] Output: demo\vmp_phA_dbg
+
+[+] VMP ??????!

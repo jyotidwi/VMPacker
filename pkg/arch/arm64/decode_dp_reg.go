@@ -156,6 +156,60 @@ var dpRegPatterns = []InstrPattern{
 		},
 	},
 
+	// ---- Data processing (3-source): SMADDL/SMSUBL ----
+	// 编码: 1:00:11011:010:Rm:o0:Ra:Rn:Rd  (sf=1 only, 32×32→64)
+	// SMADDL: o0=0, Xd = Xa + SEXT(Wn)*SEXT(Wm)
+	// SMULL:  o0=0, Ra=11111 (SMADDL alias)
+	{
+		Name: "SMADDL", Mask: 0xFFE08000, Value: 0x9B200000, Op: SMADDL,
+		Fields: []FieldDef{fRm16, fRn, fRd},
+		Post: func(f map[string]int64, inst *vm.Instruction) {
+			inst.SF = true // always 64-bit result
+			xzrReplace(&inst.Rd)
+			xzrReplace(&inst.Rn)
+			xzrReplace(&inst.Rm)
+		},
+	},
+	// SMSUBL: o0=1, Xd = Xa - SEXT(Wn)*SEXT(Wm)
+	// SMNEGL: Ra=11111 (SMSUBL alias)
+	{
+		Name: "SMSUBL", Mask: 0xFFE08000, Value: 0x9B208000, Op: SMSUBL,
+		Fields: []FieldDef{fRm16, fRn, fRd},
+		Post: func(f map[string]int64, inst *vm.Instruction) {
+			inst.SF = true
+			xzrReplace(&inst.Rd)
+			xzrReplace(&inst.Rn)
+			xzrReplace(&inst.Rm)
+		},
+	},
+
+	// ---- Data processing (3-source): UMADDL/UMSUBL ----
+	// 编码: 1:00:11011:101:Rm:o0:Ra:Rn:Rd  (sf=1 only, 32×32→64 unsigned)
+	// UMADDL: o0=0, Xd = Xa + ZEXT(Wn)*ZEXT(Wm)
+	// UMULL:  o0=0, Ra=11111 (UMADDL alias)
+	{
+		Name: "UMADDL", Mask: 0xFFE08000, Value: 0x9BA00000, Op: UMADDL,
+		Fields: []FieldDef{fRm16, fRn, fRd},
+		Post: func(f map[string]int64, inst *vm.Instruction) {
+			inst.SF = true // always 64-bit result
+			xzrReplace(&inst.Rd)
+			xzrReplace(&inst.Rn)
+			xzrReplace(&inst.Rm)
+		},
+	},
+	// UMSUBL: o0=1, Xd = Xa - ZEXT(Wn)*ZEXT(Wm)
+	// UMNEGL: Ra=11111 (UMSUBL alias)
+	{
+		Name: "UMSUBL", Mask: 0xFFE08000, Value: 0x9BA08000, Op: UMSUBL,
+		Fields: []FieldDef{fRm16, fRn, fRd},
+		Post: func(f map[string]int64, inst *vm.Instruction) {
+			inst.SF = true
+			xzrReplace(&inst.Rd)
+			xzrReplace(&inst.Rn)
+			xzrReplace(&inst.Rm)
+		},
+	},
+
 	// ---- Data processing (3-source): UMULH ----
 	// 编码: 1:00:11011:110:Rm:0:11111:Rn:Rd
 	// sf=1 (64-bit only), op54=00, op31=110, o0=0, Ra=11111
@@ -238,9 +292,9 @@ func postShiftedXZR3(f map[string]int64, inst *vm.Instruction) {
 	}
 }
 
-// postExtReg extended register: option→ShiftType, imm3→Shift, Rn=31→SP(保留), Rd/Rm→XZR
+// postExtReg extended register: option→ShiftType, imm3→Shift, Rn=31→SP(保留), Rd=31→SP(保留), Rm→XZR
 func postExtReg(f map[string]int64, inst *vm.Instruction) {
-	xzrReplace(&inst.Rd)
+	// Rd=31 在 extended register 中也是 SP (如 SUB SP, SP, Xm)，不做 XZR 替换
 	xzrReplace(&inst.Rm)
 	// Rn=31 在 extended register 中是 SP, 不做 XZR 替换
 	if option, ok := f["option"]; ok {

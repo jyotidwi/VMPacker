@@ -1,0 +1,54 @@
+============================================================
+VMP Phase-by-Phase Test
+============================================================
+
+[stub_phase_A] VMP protecting 0x100013C0-0x100014C0 ... OK -> CRASH
+
+[stub_phase_B] VMP protecting 0x100014C0-0x10001528 ... OK -> PASS
+
+[stub_phase_C] VMP protecting 0x10001528-0x100015D0 ... OK -> PASS
+
+[stub_phase_D] VMP protecting 0x100015D0-0x10001660 ... OK -> PASS
+
+[stub_phase_E] VMP protecting 0x10001660-0x10001700 ... OK -> PASS
+
+[stub_phase_F] VMP protecting 0x10001700-0x10001988 ... OK -> CRASH
+
+[stub_phase_G] VMP protecting 0x10001988-0x10001AA8 ... OK -> PASS
+
+python : Exception in thread Thread-58 (_readerthread):
+???? ?:1 ??: 1
++ python demo\vmp_phase_test.py 2>&1 | Out-File demo\vmp_results2.txt - ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo              : NotSpeci    fied: (Exception     in th..._readerth    read)::String) []    , RemoteException
+    + FullyQualifiedE    rrorId : NativeCo    mmandError
+ 
+Exception in thread Thread-57 (_readerthread):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "C:\Users\Rabe\AppData\Local\Programs\Python\Python313\Lib\threading.py", line 1043, in _bootstrap_inner
+    self.run()
+    ~~~~~~~~^^
+  File "C:\Users\Rabe\AppData\Local\Programs\Python\Python313\Lib\threading.py", line 1043, in _bootstrap_inner
+    self.run()
+    ~~~~~~~~^^
+  File "C:\Users\Rabe\AppData\Local\Programs\Python\Python313\Lib\threading.py", line 994, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Rabe\AppData\Local\Programs\Python\Python313\Lib\threading.py", line 994, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Rabe\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1615, in _readerthread
+    buffer.append(fh.read())
+                  ~~~~~~~^^
+  File "C:\Users\Rabe\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1615, in _readerthread
+    buffer.append(fh.read())
+                  ~~~~~~~^^
+UnicodeDecodeError: 'gbk' codec can't decode byte 0x94 in position 81: illegal multibyte sequence
+UnicodeDecodeError: 'gbk' codec can't decode byte 0xae in position 510: illegal multibyte sequence
+[stub_phase_H] VMP protecting 0x10001AA8-0x10001B58 ... VMP FAIL (rc=1)
+Traceback (most recent call last):
+  File "C:\Users\Rabe\Desktop\vmp\demo\vmp_phase_test.py", line 47, in <module>
+    print(r.stderr[-300:])
+          ~~~~~~~~^^^^^^^
+TypeError: 'NoneType' object is not subscriptable

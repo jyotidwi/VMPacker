@@ -1,0 +1,62 @@
+﻿go-packer\bin\packer.e
+xe : ARM64 ELF Packer 
+(NRV2B + Filter 0x52)
+所在位置 行:1 字符: 1
++ go-packer\bin\packer
+.exe 2>&1 | Out-File -
+Encoding utf8 demo\pac
+ker_h ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (ARM64 ELF    
+ Packer (NRV2B + F    
+ilter 0x52):Strin    g
+) [], RemoteExce    pt
+ion
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+
+Usage: C:\Users\Rabe\D
+esktop\vmp\go-packer\b
+in\packer.exe -i <inpu
+t> -o <output> [option
+s]
+
+Options:
+  -enable-antidump
+    	Enable anti-dump 
+protection
+  -enable-brkscan
+    	Enable BRK instru
+ction scanning
+  -enable-crc
+    	Enable CRC integr
+ity checking
+  -enable-proccheck
+    	Enable /proc dete
+ction
+  -enable-timing
+    	Enable timing-bas
+ed debug detection
+  -enable-wipe
+    	Enable sensitive 
+data wipe
+  -encrypt
+    	Enable XOR encryp
+tion
+  -i string
+    	Input ELF file (r
+equired)
+  -keylen int
+    	XOR key length in
+ bytes (default 16)
+  -o string
+    	Output packed ELF
+ file (required)
+  -protect
+    	Enable all protec
+tion features

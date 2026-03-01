@@ -34,9 +34,8 @@
 #endif
 
 /* ---- Token 化入口 (条件编译) ---- */
-#ifdef VM_TOKEN_ENTRY
+/* TOKEN_ONLY: Token 入口始终编译 */
 #include "vm_token.h"
-#endif
 
 /* ---- syscall: mmap (无 libc 依赖) ---- */
 static inline void *sys_mmap(unsigned long size) {
@@ -87,60 +86,58 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
  * X16 (IP0) 传递 token，X0-X7 保持调用方原始参数不变。
  * vm_entry_token_asm 负责保存寄存器并调用 vm_entry_token_inner。
  * ================================================================ */
-#ifdef VM_TOKEN_ENTRY
+/* TOKEN_ONLY: Token 入口始终编译 */
 
 /* Packer 在 payload 中 patch 此变量为 token 描述符表的 VA */
-__attribute__((section(".data.entry"), used))
-volatile u64 _token_table_va = 0;
+__attribute__((section(".data.entry"), used)) volatile u64 _token_table_va = 0;
 
 /* 内部 C 函数: 解码 token 并调用 vm_entry */
-__attribute__((noinline, section(".text.entry")))
-u64 vm_entry_token_inner(u64 *args, u32 token) {
-    u8 xor_key = (u8)TOKEN_XOR_KEY(token);
-    u32 func_id = TOKEN_FUNC_ID(token);
+__attribute__((noinline, section(".text.entry"))) u64
+vm_entry_token_inner(u64 *args, u32 token) {
+  u8 xor_key = (u8)TOKEN_XOR_KEY(token);
+  u32 func_id = TOKEN_FUNC_ID(token);
 
-    /* PIE 兼容: _token_table_va 存储的是相对于自身地址的偏移
-     * 用 ADR 获取 _token_table_va 的运行时地址 (PC-relative, ±1MB)
-     * 然后加上偏移得到 token 描述符表的实际地址 */
-    u64 self_va;
-    __asm__ volatile("adr %0, _token_table_va" : "=r"(self_va));
-    u64 tbl_off = *(volatile u64 *)&_token_table_va;
-    if (__builtin_expect(tbl_off == 0, 0))
-        return 0; /* 表未初始化, 安全退出 */
+  /* PIE 兼容: _token_table_va 存储的是相对于自身地址的偏移
+   * 用 ADR 获取 _token_table_va 的运行时地址 (PC-relative, ±1MB)
+   * 然后加上偏移得到 token 描述符表的实际地址 */
+  u64 self_va;
+  __asm__ volatile("adr %0, _token_table_va" : "=r"(self_va));
+  u64 tbl_off = *(volatile u64 *)&_token_table_va;
+  if (__builtin_expect(tbl_off == 0, 0))
+    return 0; /* 表未初始化, 安全退出 */
 
-    token_desc_t *table = (token_desc_t *)(self_va + tbl_off);
-    /* bc_off 也是相对于 _token_table_va 的偏移 */
-    u8 *enc_bc = (u8 *)(self_va + table[func_id].bc_off);
-    u32 bc_len = table[func_id].bc_len;
+  token_desc_t *table = (token_desc_t *)(self_va + tbl_off);
+  /* bc_off 也是相对于 _token_table_va 的偏移 */
+  u8 *enc_bc = (u8 *)(self_va + table[func_id].bc_off);
+  u32 bc_len = table[func_id].bc_len;
 
-    if (__builtin_expect(enc_bc == (u8 *)self_va || bc_len == 0, 0))
-        return 0; /* 无效条目, 安全退出 */
+  if (__builtin_expect(enc_bc == (u8 *)self_va || bc_len == 0, 0))
+    return 0; /* 无效条目, 安全退出 */
 
-    return vm_entry(args, enc_bc, bc_len, xor_key);
+  return vm_entry(args, enc_bc, bc_len, xor_key);
 }
 
 /* Naked 汇编入口: 保存调用方寄存器, 调用 C 内部函数 */
-__attribute__((naked, section(".text.entry"), used))
-void vm_entry_token(void) {
-    __asm__ volatile(
-        "mov x9, x29\n"                /* 暂存 caller FP */
-        "mov x10, x30\n"               /* 暂存 caller LR */
-        "stp x29, x30, [sp, #-96]!\n"  /* 保存 FP/LR + 分配 96B 栈帧 */
-        "mov x29, sp\n"                /* 建立栈帧 */
-        "stp x0, x1, [sp, #16]\n"      /* args[0..1] */
-        "stp x2, x3, [sp, #32]\n"      /* args[2..3] */
-        "stp x4, x5, [sp, #48]\n"      /* args[4..5] */
-        "stp x6, x7, [sp, #64]\n"      /* args[6..7] */
-        "stp x9, x10, [sp, #80]\n"     /* args[8]=callerFP, args[9]=callerLR */
-        "add x0, sp, #16\n"            /* X0 = args 指针 (10 个 u64) */
-        "mov w1, w16\n"                /* X1 = token (从 X16/IP0 传入) */
-        "bl vm_entry_token_inner\n"     /* 调用 C 内部函数 */
-        "ldp x29, x30, [sp], #96\n"    /* 恢复 FP/LR + 释放栈帧 */
-        "ret\n"                         /* 返回 (结果在 X0) */
-    );
+__attribute__((naked, section(".text.entry"), used)) void vm_entry_token(void) {
+  __asm__ volatile(
+      "mov x9, x29\n"               /* 暂存 caller FP */
+      "mov x10, x30\n"              /* 暂存 caller LR */
+      "stp x29, x30, [sp, #-96]!\n" /* 保存 FP/LR + 分配 96B 栈帧 */
+      "mov x29, sp\n"               /* 建立栈帧 */
+      "stp x0, x1, [sp, #16]\n"     /* args[0..1] */
+      "stp x2, x3, [sp, #32]\n"     /* args[2..3] */
+      "stp x4, x5, [sp, #48]\n"     /* args[4..5] */
+      "stp x6, x7, [sp, #64]\n"     /* args[6..7] */
+      "stp x9, x10, [sp, #80]\n"    /* args[8]=callerFP, args[9]=callerLR */
+      "add x0, sp, #16\n"           /* X0 = args 指针 (10 个 u64) */
+      "mov w1, w16\n"               /* X1 = token (从 X16/IP0 传入) */
+      "bl vm_entry_token_inner\n"   /* 调用 C 内部函数 */
+      "ldp x29, x30, [sp], #96\n"   /* 恢复 FP/LR + 释放栈帧 */
+      "ret\n"                       /* 返回 (结果在 X0) */
+  );
 }
 
-#endif /* VM_TOKEN_ENTRY */
+/* end TOKEN_ONLY */
 
 /* ---- vm_entry 实现 ---- */
 __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
@@ -192,9 +189,11 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
     u32 trail_func_size = rd32(&bc_buf[bc_len - 4]);
     u64 trail_func_addr = rd64(&bc_buf[bc_len - 12]);
     u32 trail_map_count = rd32(&bc_buf[bc_len - 16]);
-    u32 trail_oc_key    = rd32(&bc_buf[bc_len - 20]);
-    u8  trail_reverse   = bc_buf[bc_len - 21];
-    u32 map_data_size = trail_map_count * 8 + 21; /* +21 for reverse+oc_key+map_count+func_addr+func_size */
+    u32 trail_oc_key = rd32(&bc_buf[bc_len - 20]);
+    u8 trail_reverse = bc_buf[bc_len - 21];
+    u32 map_data_size =
+        trail_map_count * 8 +
+        21; /* +21 for reverse+oc_key+map_count+func_addr+func_size */
 
     /* 设置 OpcodeCryptor 密钥 + reverse 标志 */
     vm->oc_key = trail_oc_key;
@@ -287,6 +286,31 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
     }
 
     /* -- 间接 Dispatch: 直接从跳转表取函数指针调用 -- */
+#ifdef VM_DEBUG_TRACE
+    /* -- Debug trace: 输出 pc+op 到 stderr -- */
+    {
+      u8 _tbuf[16];
+/* 内联计算十六进制字符 (避免 static 数据引用) */
+#define _HX(n) ((u8)((n) < 10 ? '0' + (n) : 'A' + (n) - 10))
+      _tbuf[0] = _HX((vm->pc >> 12) & 0xF);
+      _tbuf[1] = _HX((vm->pc >> 8) & 0xF);
+      _tbuf[2] = _HX((vm->pc >> 4) & 0xF);
+      _tbuf[3] = _HX(vm->pc & 0xF);
+      _tbuf[4] = ':';
+      _tbuf[5] = _HX((_dec_op >> 4) & 0xF);
+      _tbuf[6] = _HX(_dec_op & 0xF);
+      _tbuf[7] = '\n';
+#undef _HX
+      register long _x8 __asm__("x8") = 64; /* __NR_write */
+      register long _x0 __asm__("x0") = 2;  /* stderr */
+      register long _x1 __asm__("x1") = (long)_tbuf;
+      register long _x2 __asm__("x2") = 8;
+      __asm__ volatile("svc #0"
+                       : "+r"(_x0)
+                       : "r"(_x8), "r"(_x1), "r"(_x2)
+                       : "memory");
+    }
+#endif
     vm_handler_fn _handler = vm_jump_table[_dec_op];
     u32 _step = _handler(vm);
 
@@ -382,7 +406,7 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
   dtab[OP_VLD16] = &&L_VLD16;
   dtab[OP_VST16] = &&L_VST16;
   /* TBZ/TBNZ */
-  dtab[OP_TBZ]  = &&L_TBZ;
+  dtab[OP_TBZ] = &&L_TBZ;
   dtab[OP_TBNZ] = &&L_TBNZ;
   /* CCMP/CCMN */
   dtab[OP_CCMP_REG] = &&L_CCMP_REG;
@@ -411,9 +435,9 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
         goto cleanup;                                                          \
     }                                                                          \
     u8 _raw_op = vm->bc[vm->pc];                                               \
-    u8 _dec_op = _raw_op ^ OC_DECRYPT(vm->pc, vm->oc_key);                    \
+    u8 _dec_op = _raw_op ^ OC_DECRYPT(vm->pc, vm->oc_key);                     \
     u8 _isz = vm_insn_size(_dec_op);                                           \
-    if (__builtin_expect(_isz == 0 || vm->pc + _isz > vm->bc_len, 0))         \
+    if (__builtin_expect(_isz == 0 || vm->pc + _isz > vm->bc_len, 0))          \
       goto cleanup;                                                            \
     goto *dtab[_dec_op];                                                       \
   } while (0)
@@ -423,7 +447,8 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
   do {                                                                         \
     u32 _adv = (n);                                                            \
     __asm__ volatile("" ::: "memory");                                         \
-    if (!vm->reverse) vm->pc += _adv;                                          \
+    if (!vm->reverse)                                                          \
+      vm->pc += _adv;                                                          \
     DISPATCH();                                                                \
   } while (0)
 #define NEXT0() DISPATCH() /* handler 已设置 pc */

@@ -28,6 +28,7 @@ import (
 //	BL  interpVA                 ; 调用 VM 解释器
 //	LDP X29, X30, [SP], #96     ; 恢复 FP/LR + 释放栈帧
 //	RET                          ; 返回 (结果在 X0)
+/* STANDARD_MODE_DISABLED: BuildTrampoline 已禁用，只保留 BuildTokenTrampoline
 func BuildTrampoline(funcAddr, interpVA, bcVA uint64, bcLen uint32, xorKey byte) []byte {
 	var buf bytes.Buffer
 
@@ -90,6 +91,7 @@ func BuildTrampoline(funcAddr, interpVA, bcVA uint64, bcLen uint32, xorKey byte)
 
 	return buf.Bytes()
 }
+STANDARD_MODE_DISABLED */
 
 // BuildTokenTrampoline 构造 Token 化入口跳板（3 条 ARM64 指令, 12 字节）
 //

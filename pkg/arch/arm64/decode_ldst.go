@@ -263,6 +263,33 @@ var ldstPatterns = []InstrPattern{
 		Fields: []FieldDef{{Name: "imm12", Hi: 21, Lo: 10}, fRn, fRd},
 		Post:   postUnsigned(2, true),
 	},
+
+	// ================================================================
+	// Load register (literal / PC-relative)
+	// 编码: opc:011:V:00:imm19:Rt
+	//   opc=00,V=0 → LDR Wt   (32-bit)
+	//   opc=01,V=0 → LDR Xt   (64-bit)
+	//   opc=10,V=0 → LDRSW Xt (32→64 sign-extend)
+	// PC-relative offset = sign_extend(imm19) * 4
+	// ================================================================
+	// LDR Xt, [PC+imm] (64-bit)
+	{
+		Name: "LDR_LIT_64", Mask: 0xFF000000, Value: 0x58000000, Op: LDR_LIT,
+		Fields: []FieldDef{{Name: "imm19", Hi: 23, Lo: 5, Signed: true}, fRd},
+		Post:   postLdrLiteral(true, false),
+	},
+	// LDR Wt, [PC+imm] (32-bit)
+	{
+		Name: "LDR_LIT_32", Mask: 0xFF000000, Value: 0x18000000, Op: LDR_LIT,
+		Fields: []FieldDef{{Name: "imm19", Hi: 23, Lo: 5, Signed: true}, fRd},
+		Post:   postLdrLiteral(false, false),
+	},
+	// LDRSW Xt, [PC+imm] (32-bit sign-extended to 64)
+	{
+		Name: "LDRSW_LIT", Mask: 0xFF000000, Value: 0x98000000, Op: LDR_LIT,
+		Fields: []FieldDef{{Name: "imm19", Hi: 23, Lo: 5, Signed: true}, fRd},
+		Post:   postLdrLiteral(true, true),
+	},
 }
 
 // ---- Post 处理函数 ----
@@ -282,6 +309,9 @@ func postPair(f map[string]int64, inst *vm.Instruction) {
 	} else {
 		inst.Imm = f["imm7"] * 4
 	}
+	// Rt/Rt2 中 reg31 = XZR (STP存零/LDP丢弃), 不是SP
+	xzrReplace(&inst.Rd)
+	xzrReplace(&inst.Rm)
 }
 
 // postSimdMulti SIMD 多结构体 load/store
@@ -341,6 +371,20 @@ func postUnsigned(scale int64, sf bool) PostFunc {
 	return func(f map[string]int64, inst *vm.Instruction) {
 		inst.Imm = f["imm12"] * scale
 		inst.SF = sf
+		xzrReplace(&inst.Rd)
+	}
+}
+
+// postLdrLiteral LDR literal 后处理: imm19*4 = PC-relative offset
+// WB=4 标记 LDRSW (sign-extend) 变体
+func postLdrLiteral(sf bool, signExtend bool) PostFunc {
+	return func(f map[string]int64, inst *vm.Instruction) {
+		inst.Imm = f["imm19"] * 4 // PC-relative byte offset
+		inst.SF = sf
+		inst.Rn = -1 // 无 base register (PC-relative)
+		if signExtend {
+			inst.WB = 4 // 标记 LDRSW
+		}
 		xzrReplace(&inst.Rd)
 	}
 }

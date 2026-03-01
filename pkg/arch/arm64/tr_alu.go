@@ -306,6 +306,116 @@ func (t *Translator) trMADD(inst vm.Instruction, isSub bool) error {
 	return nil
 }
 
+// trSMADDL 翻译 SMADDL/SMSUBL
+// SMADDL: Xd = Xa + SEXT(Wn) * SEXT(Wm)  (isSub=false)
+// SMSUBL: Xd = Xa - SEXT(Wn) * SEXT(Wm)  (isSub=true)
+// Ra 从 inst.Raw bits[14:10] 提取
+// 翻译策略: R14=SEXT(Wn), R15=SEXT(Wm), R15=R14*R15, Rd=Ra+/-R15
+func (t *Translator) trSMADDL(inst vm.Instruction, isSub bool) error {
+	rd, err := t.mapReg(inst.Rd)
+	if err != nil {
+		return err
+	}
+	rn, err := t.mapReg(inst.Rn)
+	if err != nil {
+		return err
+	}
+	rm, err := t.mapReg(inst.Rm)
+	if err != nil {
+		return err
+	}
+	// Ra = bits[14:10]
+	raIdx := int((inst.Raw >> 10) & 0x1F)
+	if raIdx == 31 {
+		raIdx = vm.REG_XZR
+	}
+	ra, err := t.mapReg(raIdx)
+	if err != nil {
+		return err
+	}
+
+	// 如果 Ra 是 XZR，先清零 (SMULL/SMNEGL alias)
+	if raIdx == vm.REG_XZR {
+		t.emit(vm.OpMovImm32, ra)
+		t.emitU32(0)
+	}
+
+	// R14 = SEXT(Wn): SHL 32 → ASR 32
+	t.emit(vm.OpShlImm, 14, rn, 32)
+	t.emit(vm.OpAsrImm, 14, 14, 32)
+
+	// R15 = SEXT(Wm): SHL 32 → ASR 32
+	t.emit(vm.OpShlImm, 15, rm, 32)
+	t.emit(vm.OpAsrImm, 15, 15, 32)
+
+	// R15 = R14 * R15
+	t.emit(vm.OpMul, 15, 14, 15)
+
+	// Rd = Ra +/- R15
+	if isSub {
+		t.emit(vm.OpSub, rd, ra, 15)
+	} else {
+		t.emit(vm.OpAdd, rd, ra, 15)
+	}
+	// SMADDL 结果总是 64-bit, 不需要 trunc32
+	return nil
+}
+
+// trUMADDL 翻译 UMADDL/UMSUBL
+// UMADDL: Xd = Xa + ZEXT(Wn) * ZEXT(Wm)  (isSub=false)
+// UMSUBL: Xd = Xa - ZEXT(Wn) * ZEXT(Wm)  (isSub=true)
+// Ra 从 inst.Raw bits[14:10] 提取
+// 翻译策略: R14=ZEXT(Wn), R15=ZEXT(Wm), R15=R14*R15, Rd=Ra+/-R15
+func (t *Translator) trUMADDL(inst vm.Instruction, isSub bool) error {
+	rd, err := t.mapReg(inst.Rd)
+	if err != nil {
+		return err
+	}
+	rn, err := t.mapReg(inst.Rn)
+	if err != nil {
+		return err
+	}
+	rm, err := t.mapReg(inst.Rm)
+	if err != nil {
+		return err
+	}
+	// Ra = bits[14:10]
+	raIdx := int((inst.Raw >> 10) & 0x1F)
+	if raIdx == 31 {
+		raIdx = vm.REG_XZR
+	}
+	ra, err := t.mapReg(raIdx)
+	if err != nil {
+		return err
+	}
+
+	// 如果 Ra 是 XZR，先清零 (UMULL/UMNEGL alias)
+	if raIdx == vm.REG_XZR {
+		t.emit(vm.OpMovImm32, ra)
+		t.emitU32(0)
+	}
+
+	// R14 = ZEXT(Wn): 清零高 32 位
+	t.emit(vm.OpMovReg, 14, rn)
+	t.trunc32(14)
+
+	// R15 = ZEXT(Wm): 清零高 32 位
+	t.emit(vm.OpMovReg, 15, rm)
+	t.trunc32(15)
+
+	// R15 = R14 * R15
+	t.emit(vm.OpMul, 15, 14, 15)
+
+	// Rd = Ra +/- R15
+	if isSub {
+		t.emit(vm.OpSub, rd, ra, 15)
+	} else {
+		t.emit(vm.OpAdd, rd, ra, 15)
+	}
+	// UMADDL 结果总是 64-bit, 不需要 trunc32
+	return nil
+}
+
 // trUmulh 翻译 UMULH Xd, Xn, Xm — 无符号高 64 位乘法
 // 格式: [OpUmulh][d][n][m] = 4B
 // UMULH 始终 64-bit (sf=1), 无 32-bit 变体

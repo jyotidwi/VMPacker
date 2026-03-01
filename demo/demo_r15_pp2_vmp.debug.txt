@@ -1,0 +1,1551 @@
+================================================================
+Function: stub_main @ 0x100013C0 (size: 1844)
+VM bytecode: 7151 bytes (pre-reverse)
+================================================================
+
+ARM64  0000: STP               (raw=0xA9B37BFD)
+  VM   0000: SUB_IMM R31, R31, 0xD0
+  VM   0007: STORE64 [R31 + 0], R29
+  VM   000C: STORE64 [R31 + 8], R30
+
+ARM64  0004: MOVZ              (raw=0x52886642)
+  VM   0011: MOV32 R2, 0x4332
+
+ARM64  0008: MOVK              (raw=0x72A86A42)
+  VM   0017: MOV R17, 0xFFFFFFFF0000FFFF
+  VM   0021: AND R2, R2, R17
+  VM   0025: OR_IMM R2, R2, 0x43520000
+
+ARM64  000C: ADD(imm)          (raw=0x910003FD)
+  VM   002C: ADD_IMM R29, R31, 0x0
+
+ARM64  0010: STP               (raw=0xA90153F3)
+  VM   0033: STORE64 [R31 + 16], R19
+  VM   0038: STORE64 [R31 + 24], R20
+
+ARM64  0014: STP               (raw=0xA9025BF5)
+  VM   003D: STORE64 [R31 + 32], R21
+  VM   0042: STORE64 [R31 + 40], R22
+
+ARM64  0018: STP               (raw=0xA90363F7)
+  VM   0047: STORE64 [R31 + 48], R23
+  VM   004C: STORE64 [R31 + 56], R24
+
+ARM64  001C: ORR(reg)          (raw=0xAA0003F8)
+  VM   0051: MOV R24, R0
+
+ARM64  0020: STP               (raw=0xA9046BF9)
+  VM   0054: STORE64 [R31 + 64], R25
+  VM   0059: STORE64 [R31 + 72], R26
+
+ARM64  0024: ORR(reg)          (raw=0xAA0103FA)
+  VM   005E: MOV R26, R1
+
+ARM64  0028: STP               (raw=0xA90573FB)
+  VM   0061: STORE64 [R31 + 80], R27
+  VM   0066: STORE64 [R31 + 88], R28
+
+ARM64  002C: LDR(imm)          (raw=0xB9400001)
+  VM   006B: LOAD32 R1, [R0 + 0]
+
+ARM64  0030: SUBS(reg)         (raw=0x6B02003F)
+  VM   0070: CMP R1, R2
+
+ARM64  0034: B.cond            (raw=0x54001D60)
+  VM   0073: JE 0x0717
+
+ARM64  0038: ORR(reg)          (raw=0xAA0003F3)
+  VM   0078: MOV R19, R0
+
+ARM64  003C: MOVZ              (raw=0xD2800016)
+  VM   007B: MOV32 R22, 0x0
+
+ARM64  0040: STR(imm)          (raw=0xF9003FBF)
+  VM   0081: MOV32 R16, 0x0
+  VM   0087: STORE64 [R29 + 120], R16
+
+ARM64  0044: STR(imm)          (raw=0xB90083BF)
+  VM   008C: MOV32 R16, 0x0
+  VM   0092: STORE32 [R29 + 128], R16
+
+ARM64  0048: STP               (raw=0x29177FBF)
+  VM   0097: STORE32 [R29 + 184], R31
+  VM   009C: STORE32 [R29 + 188], R31
+
+ARM64  004C: LDRB(imm)         (raw=0x39402E60)
+  VM   00A1: LOAD8 R0, [R19 + 11]
+
+ARM64  0050: LDRB(imm)         (raw=0x39402661)
+  VM   00A6: LOAD8 R1, [R19 + 9]
+
+ARM64  0054: STR(imm)          (raw=0xB900A7A1)
+  VM   00AB: STORE32 [R29 + 164], R1
+
+ARM64  0058: LDR(imm)          (raw=0xB940066C)
+  VM   00B0: LOAD32 R12, [R19 + 4]
+
+ARM64  005C: TBNZ              (raw=0x37001740)
+  VM   00B5: TBNZ R0, #0, 0x0600
+
+ARM64  0060: ADD(imm)          (raw=0x91003273)
+  VM   00BC: ADD_IMM R19, R19, 0xC
+
+ARM64  0064: MOVZ              (raw=0xD2800019)
+  VM   00C3: MOV32 R25, 0x0
+
+ARM64  0068: MOVZ              (raw=0x5280001C)
+  VM   00C9: MOV32 R28, 0x0
+
+ARM64  006C: STR(imm)          (raw=0xB900ABBF)
+  VM   00CF: MOV32 R16, 0x0
+  VM   00D5: STORE32 [R29 + 168], R16
+
+ARM64  0070: CBZ               (raw=0xB4000116)
+  VM   00DA: CMP R22, 0x0
+  VM   00E0: JE 0x0110
+
+ARM64  0074: ADRP              (raw=0x90000003)
+  VM   00E5: MOV R3, 0x10001000
+
+ARM64  0078: LDR(imm)          (raw=0xB94016C0)
+  VM   00EF: LOAD32 R0, [R22 + 20]
+
+ARM64  007C: LDR(imm)          (raw=0xB94AF461)
+  VM   00F4: LOAD32 R1, [R3 + 2804]
+
+ARM64  0080: SUB(reg)          (raw=0xCB000314)
+  VM   00F9: SUB R20, R24, R0
+
+ARM64  0084: TBNZ              (raw=0x37001921)
+  VM   00FD: TBNZ R1, #0, 0x06B2
+
+ARM64  0088: LDR(imm)          (raw=0xB94AF460)
+  VM   0104: LOAD32 R0, [R3 + 2804]
+
+ARM64  008C: TBNZ              (raw=0x372817A0)
+  VM   0109: TBNZ R0, #5, 0x0661
+
+ARM64  0090: LDR(reg)          (raw=0xB86C4A62)
+  VM   0110: ADD R17, R19, R12
+  VM   0114: LOAD32 R2, [R17 + 0]
+
+ARM64  0094: ORR(reg)          (raw=0x2A0C03ED)
+  VM   0119: MOV R13, R12
+
+ARM64  0098: ADD(reg)          (raw=0x8B0D0275)
+  VM   011C: ADD R21, R19, R13
+
+ARM64  009C: STR(imm)          (raw=0xB90077A2)
+  VM   0120: STORE32 [R29 + 116], R2
+
+ARM64  00A0: STR(imm)          (raw=0xB90093AC)
+  VM   0125: STORE32 [R29 + 144], R12
+
+ARM64  00A4: ADD(imm)          (raw=0x910012A0)
+  VM   012A: ADD_IMM R0, R21, 0x4
+
+ARM64  00A8: STR(imm)          (raw=0xF9004FAD)
+  VM   0131: STORE64 [R29 + 152], R13
+
+ARM64  00AC: BL                (raw=0x97FFFF21)
+  VM   0136: CALL 0x100010F0
+
+ARM64  00B0: ORR(reg)          (raw=0xAA0003FB)
+  VM   013F: MOV R27, R0
+
+ARM64  00B4: ADD(imm)          (raw=0x910032A0)
+  VM   0142: ADD_IMM R0, R21, 0xC
+
+ARM64  00B8: BL                (raw=0x97FFFF1E)
+  VM   0149: CALL 0x100010F0
+
+ARM64  00BC: LDRB(imm)         (raw=0x394056A1)
+  VM   0152: LOAD8 R1, [R21 + 21]
+
+ARM64  00C0: ORR(reg)          (raw=0xAA0003F4)
+  VM   0157: MOV R20, R0
+
+ARM64  00C4: LDRB(imm)         (raw=0x394052A0)
+  VM   015A: LOAD8 R0, [R21 + 20]
+
+ARM64  00C8: LDRB(imm)         (raw=0x394076B7)
+  VM   015F: LOAD8 R23, [R21 + 29]
+
+ARM64  00CC: ORR(reg)          (raw=0x2A012000)
+  VM   0164: SHL_IMM R17, R1, 0x8
+  VM   016B: OR R0, R0, R17
+  VM   016F: AND_IMM R0, R0, 0xFFFFFFFF
+
+ARM64  00D0: STR(imm)          (raw=0xB900B3A0)
+  VM   0176: STORE32 [R29 + 176], R0
+
+ARM64  00D4: LDRB(imm)         (raw=0x394072A0)
+  VM   017B: LOAD8 R0, [R21 + 28]
+
+ARM64  00D8: LDRB(imm)         (raw=0x39407EA1)
+  VM   0180: LOAD8 R1, [R21 + 31]
+
+ARM64  00DC: ORR(reg)          (raw=0x2A172017)
+  VM   0185: SHL_IMM R17, R23, 0x8
+  VM   018C: OR R23, R0, R17
+  VM   0190: AND_IMM R23, R23, 0xFFFFFFFF
+
+ARM64  00E0: LDRB(imm)         (raw=0x39407AA0)
+  VM   0197: LOAD8 R0, [R21 + 30]
+
+ARM64  00E4: SBFM              (raw=0x13003EF7)
+  VM   019C: SHL_IMM R23, R23, 0x30
+  VM   01A3: ASR_IMM R23, R23, 0x30
+  VM   01AA: AND_IMM R23, R23, 0xFFFFFFFF
+
+ARM64  00E8: ORR(reg)          (raw=0x2A012000)
+  VM   01B1: SHL_IMM R17, R1, 0x8
+  VM   01B8: OR R0, R0, R17
+  VM   01BC: AND_IMM R0, R0, 0xFFFFFFFF
+
+ARM64  00EC: STR(imm)          (raw=0xB900A3A0)
+  VM   01C3: STORE32 [R29 + 160], R0
+
+ARM64  00F0: ADD(imm)          (raw=0x910082A0)
+  VM   01C8: ADD_IMM R0, R21, 0x20
+
+ARM64  00F4: BL                (raw=0x97FFFF0F)
+  VM   01CF: CALL 0x100010F0
+
+ARM64  00F8: STR(imm)          (raw=0xF90047A0)
+  VM   01D8: STORE64 [R29 + 136], R0
+
+ARM64  00FC: SUBS(imm)         (raw=0xF100029F)
+  VM   01DD: CMP R20, 0x0
+
+ARM64  0100: LDR(imm)          (raw=0xB9401AA0)
+  VM   01E3: LOAD32 R0, [R21 + 24]
+
+ARM64  0104: ORR(reg)          (raw=0x2A0203E7)
+  VM   01E8: MOV R7, R2
+
+ARM64  0108: CCMP(imm)         (raw=0x7A430AE0)
+  VM   01EB: CCMP_IMM R23, #3, #0, cond=0 sf=0
+
+ARM64  010C: ADD(imm)          (raw=0x913FFCE6)
+  VM   01F1: ADD_IMM R6, R7, 0xFFF
+
+ARM64  0110: AND(imm)          (raw=0x12000000)
+  VM   01F8: AND_IMM R0, R0, 0x1
+  VM   01FF: AND_IMM R0, R0, 0xFFFFFFFF
+
+ARM64  0114: STR(imm)          (raw=0xB90087A0)
+  VM   0206: STORE32 [R29 + 132], R0
+
+ARM64  0118: LDR(imm)          (raw=0xB94093AC)
+  VM   020B: LOAD32 R12, [R29 + 144]
+
+ARM64  011C: LDR(imm)          (raw=0xF9404FAD)
+  VM   0210: LOAD64 R13, [R29 + 152]
+
+ARM64  0120: B.cond            (raw=0x54000F21)
+  VM   0215: JNE 0x0597
+
+ARM64  0124: AND(imm)          (raw=0x92744CC6)
+  VM   021A: AND_IMM R6, R6, 0xFFFFF000
+
+ARM64  0128: MOVZ              (raw=0xD2800000)
+  VM   0221: MOV32 R0, 0x0
+
+ARM64  012C: ORR(reg)          (raw=0xAA0603E1)
+  VM   0227: MOV R1, R6
+
+ARM64  0130: MOVZ              (raw=0xD28000E2)
+  VM   022A: MOV32 R2, 0x7
+
+ARM64  0134: MOVZ              (raw=0xD2800443)
+  VM   0230: MOV32 R3, 0x22
+
+ARM64  0138: MOVN              (raw=0x92800004)
+  VM   0236: MOV R4, 0xFFFFFFFFFFFFFFFF
+
+ARM64  013C: MOVZ              (raw=0xD2800005)
+  VM   0240: MOV32 R5, 0x0
+
+ARM64  0140: MOVZ              (raw=0x52801BC8)
+  VM   0246: MOV32 R8, 0xDE
+
+ARM64  0144: SVC               (raw=0xD4000001)
+  VM   024C: SVC #0x0
+
+ARM64  0148: TBNZ              (raw=0xB7F80DC0)
+  VM   024F: TBNZ R0, #63, 0x058E
+
+ARM64  014C: ORR(reg)          (raw=0xAA0003F4)
+  VM   0256: MOV R20, R0
+
+ARM64  0150: STR(imm)          (raw=0xF9004FBF)
+  VM   0259: MOV32 R16, 0x0
+  VM   025F: STORE64 [R29 + 152], R16
+
+ARM64  0154: CBZ               (raw=0xB4000096)
+  VM   0264: CMP R22, 0x0
+  VM   026A: JE 0x0285
+
+ARM64  0158: ADRP              (raw=0x90000000)
+  VM   026F: MOV R0, 0x10001000
+
+ARM64  015C: LDR(imm)          (raw=0xB94AF400)
+  VM   0279: LOAD32 R0, [R0 + 2804]
+
+ARM64  0160: TBNZ              (raw=0x37180FE0)
+  VM   027E: TBNZ R0, #3, 0x0626
+
+ARM64  0164: LDR(imm)          (raw=0xB940ABA0)
+  VM   0285: LOAD32 R0, [R29 + 168]
+
+ARM64  0168: SUBS(imm)         (raw=0x7100039F)
+  VM   028A: CMP R28, 0x0
+
+ARM64  016C: ORR(reg)          (raw=0xAA1503E8)
+  VM   0290: MOV R8, R21
+
+ARM64  0170: CCMP(imm)         (raw=0x7A411800)
+  VM   0293: CCMP_IMM R0, #1, #0, cond=1 sf=0
+
+ARM64  0174: B.cond            (raw=0x54000361)
+  VM   0299: JNE 0x0357
+
+ARM64  0178: ADD(reg)          (raw=0x8B1400C0)
+  VM   029E: ADD R0, R6, R20
+
+ARM64  017C: SUB(reg)          (raw=0xCB0D0000)
+  VM   02A2: SUB R0, R0, R13
+
+ARM64  0180: ADD(reg)          (raw=0x8B0D0008)
+  VM   02A6: ADD R8, R0, R13
+
+ARM64  0184: ORR(reg)          (raw=0xAA0003E5)
+  VM   02AA: MOV R5, R0
+
+ARM64  0188: CBZ               (raw=0x3400166C)
+  VM   02AD: CMP R12, 0x0
+  VM   02B3: JE 0x0815
+
+ARM64  018C: SUB(imm)          (raw=0x51000581)
+  VM   02B8: SUB_IMM R1, R12, 0x1
+  VM   02BF: AND_IMM R1, R1, 0xFFFFFFFF
+
+ARM64  0190: SUB(reg)          (raw=0xCB00026B)
+  VM   02C6: SUB R11, R19, R0
+
+ARM64  0194: ADD(imm)          (raw=0x91000421)
+  VM   02CA: ADD_IMM R1, R1, 0x1
+
+ARM64  0198: ORR(reg)          (raw=0xAA0003E4)
+  VM   02D1: MOV R4, R0
+
+ARM64  019C: ADD(reg)          (raw=0x8B000021)
+  VM   02D4: ADD R1, R1, R0
+
+ARM64  01A0: LDRB(reg)         (raw=0x38646962)
+  VM   02D8: ADD R17, R11, R4
+  VM   02DC: LOAD8 R2, [R17 + 0]
+
+ARM64  01A4: STRB(imm)         (raw=0x38001482)
+  VM   02E1: STORE8 [R4 + 0], R2
+  VM   02E6: ADD_IMM R4, R4, 0x1
+
+ARM64  01A8: SUBS(reg)         (raw=0xEB01009F)
+  VM   02ED: CMP R4, R1
+
+ARM64  01AC: B.cond            (raw=0x54FFFFA1)
+  VM   02F0: JNE 0x02D8
+
+ARM64  01B0: MOVZ              (raw=0x52800001)
+  VM   02F5: MOV32 R1, 0x0
+
+ARM64  01B4: NOP               (raw=0xD503201F)
+  VM   02FB: NOP
+
+ARM64  01B8: LDRB(reg)         (raw=0x38614B22)
+  VM   02FC: ADD R17, R25, R1
+  VM   0300: LOAD8 R2, [R17 + 0]
+
+ARM64  01BC: ADD(imm)          (raw=0x11000421)
+  VM   0305: ADD_IMM R1, R1, 0x1
+  VM   030C: AND_IMM R1, R1, 0xFFFFFFFF
+
+ARM64  01C0: LDRB(imm)         (raw=0x39400003)
+  VM   0313: LOAD8 R3, [R0 + 0]
+
+ARM64  01C4: SUBS(reg)         (raw=0x6B1C003F)
+  VM   0318: CMP R1, R28
+
+ARM64  01C8: CSEL              (raw=0x1A9F1021)
+  VM   031B: MOV R15, 0x0
+  VM   0325: JNE 0x0332
+  VM   032A: MOV R1, R15
+  VM   032D: JMP 0x0335
+  VM   0332: MOV R1, R1
+
+ARM64  01CC: EOR(reg)          (raw=0x4A030042)
+  VM   0335: XOR R2, R2, R3
+  VM   0339: AND_IMM R2, R2, 0xFFFFFFFF
+
+ARM64  01D0: STRB(imm)         (raw=0x38001402)
+  VM   0340: STORE8 [R0 + 0], R2
+  VM   0345: ADD_IMM R0, R0, 0x1
+
+ARM64  01D4: SUBS(reg)         (raw=0xEB04001F)
+  VM   034C: CMP R0, R4
+
+ARM64  01D8: B.cond            (raw=0x54FFFF01)
+  VM   034F: JNE 0x02FC
+
+ARM64  01DC: ORR(reg)          (raw=0xAA0503F3)
+  VM   0354: MOV R19, R5
+
+ARM64  01E0: STR(imm)          (raw=0xF90063B3)
+  VM   0357: STORE64 [R29 + 192], R19
+
+ARM64  01E4: ADD(reg)          (raw=0x8B070287)
+  VM   035C: ADD R7, R20, R7
+
+ARM64  01E8: ORR(reg)          (raw=0xAA1403F3)
+  VM   0360: MOV R19, R20
+
+ARM64  01EC: MOVZ              (raw=0x52B00000)
+  VM   0363: MOV32 R0, 0x80000000
+
+ARM64  01F0: MOVN              (raw=0x12800006)
+  VM   0369: MOV32 R6, 0xFFFFFFFF
+
+ARM64  01F4: MOVZ              (raw=0x529FFFE9)
+  VM   036F: MOV32 R9, 0xFFFF
+
+ARM64  01F8: STR(imm)          (raw=0xB900CBA0)
+  VM   0375: STORE32 [R29 + 200], R0
+
+ARM64  01FC: NOP               (raw=0xD503201F)
+  VM   037A: NOP
+
+ARM64  0200: ADD(imm)          (raw=0x910303A0)
+  VM   037B: ADD_IMM R0, R29, 0xC0
+
+ARM64  0204: BL                (raw=0x97FFFEAD)
+  VM   0382: CALL 0x10001078
+
+ARM64  0208: CBZ               (raw=0x340001C0)
+  VM   038B: CMP R0, 0x0
+  VM   0391: JE 0x03E3
+
+ARM64  020C: SUBS(reg)         (raw=0xEB1300FF)
+  VM   0396: CMP R7, R19
+
+ARM64  0210: B.cond            (raw=0x54000789)
+  VM   0399: JBE 0x058E
+
+ARM64  0214: LDR(imm)          (raw=0xF94063A0)
+  VM   039E: LOAD64 R0, [R29 + 192]
+
+ARM64  0218: SUBS(reg)         (raw=0xEB08001F)
+  VM   03A3: CMP R0, R8
+
+ARM64  021C: B.cond            (raw=0x54000728)
+  VM   03A6: JA 0x058E
+
+ARM64  0220: ADD(imm)          (raw=0x91000401)
+  VM   03AB: ADD_IMM R1, R0, 0x1
+
+ARM64  0224: ADD(imm)          (raw=0x91000673)
+  VM   03B2: ADD_IMM R19, R19, 0x1
+
+ARM64  0228: STR(imm)          (raw=0xF90063A1)
+  VM   03B9: STORE64 [R29 + 192], R1
+
+ARM64  022C: LDRB(imm)         (raw=0x39400000)
+  VM   03BE: LOAD8 R0, [R0 + 0]
+
+ARM64  0230: STRB(imm)         (raw=0x381FF260)
+  VM   03C3: STORE8 [R19 + 65535], R0
+
+ARM64  0234: ADD(imm)          (raw=0x910303A0)
+  VM   03C8: ADD_IMM R0, R29, 0xC0
+
+ARM64  0238: BL                (raw=0x97FFFEA0)
+  VM   03CF: CALL 0x10001078
+
+ARM64  023C: CBNZ              (raw=0x35FFFE80)
+  VM   03D8: CMP R0, 0x0
+  VM   03DE: JNE 0x0396
+
+ARM64  0240: ADD(imm)          (raw=0x910303A0)
+  VM   03E3: ADD_IMM R0, R29, 0xC0
+
+ARM64  0244: BL                (raw=0x97FFFEAD)
+  VM   03EA: CALL 0x100010B8
+
+ARM64  0248: SUBS(imm)         (raw=0x71000C00)
+  VM   03F3: SUB_IMM R0, R0, 0x3
+  VM   03FA: CMP R0, 0x0
+  VM   0400: AND_IMM R0, R0, 0xFFFFFFFF
+
+ARM64  024C: B.cond            (raw=0x54000164)
+  VM   0407: JL 0x044E
+
+ARM64  0250: LDR(imm)          (raw=0xF94063A1)
+  VM   040C: LOAD64 R1, [R29 + 192]
+
+ARM64  0254: SUBS(reg)         (raw=0xEB08003F)
+  VM   0411: CMP R1, R8
+
+ARM64  0258: B.cond            (raw=0x54000548)
+  VM   0414: JA 0x058E
+
+ARM64  025C: ADD(imm)          (raw=0x91000422)
+  VM   0419: ADD_IMM R2, R1, 0x1
+
+ARM64  0260: STR(imm)          (raw=0xF90063A2)
+  VM   0420: STORE64 [R29 + 192], R2
+
+ARM64  0264: LDRB(imm)         (raw=0x39400026)
+  VM   0425: LOAD8 R6, [R1 + 0]
+
+ARM64  0268: ORR(reg)          (raw=0x2A0020C6)
+  VM   042A: SHL_IMM R17, R0, 0x8
+  VM   0431: OR R6, R6, R17
+  VM   0435: AND_IMM R6, R6, 0xFFFFFFFF
+
+ARM64  026C: SUBS(reg)         (raw=0x6B0900DF)
+  VM   043C: CMP R6, R9
+
+ARM64  0270: B.cond            (raw=0x54001020)
+  VM   043F: JE 0x0848
+
+ARM64  0274: MVN               (raw=0x2A2603E6)
+  VM   0444: NOT R6, R6
+  VM   0447: AND_IMM R6, R6, 0xFFFFFFFF
+
+ARM64  0278: ADD(imm)          (raw=0x910303A0)
+  VM   044E: ADD_IMM R0, R29, 0xC0
+
+ARM64  027C: BL                (raw=0x97FFFE8F)
+  VM   0455: CALL 0x10001078
+
+ARM64  0280: ORR(reg)          (raw=0x2A0003E4)
+  VM   045E: MOV R4, R0
+
+ARM64  0284: ADD(imm)          (raw=0x910303A0)
+  VM   0461: ADD_IMM R0, R29, 0xC0
+
+ARM64  0288: BL                (raw=0x97FFFE8C)
+  VM   0468: CALL 0x10001078
+
+ARM64  028C: ORR(reg)          (raw=0x2A040400)
+  VM   0471: SHL_IMM R17, R4, 0x1
+  VM   0478: OR R0, R0, R17
+  VM   047C: AND_IMM R0, R0, 0xFFFFFFFF
+
+ARM64  0290: CBZ               (raw=0x34000260)
+  VM   0483: CMP R0, 0x0
+  VM   0489: JE 0x0524
+
+ARM64  0294: ADDS(imm)         (raw=0x313400DF)
+  VM   048E: ADD_IMM R17, R6, 0xD00
+  VM   0495: CMP R17, 0x0
+
+ARM64  0298: CSINC             (raw=0x1A80A400)
+  VM   049B: JGE 0x04AF
+  VM   04A0: MOV R0, R0
+  VM   04A3: ADD_IMM R0, R0, 0x1
+  VM   04AA: JMP 0x04B2
+  VM   04AF: MOV R0, R0
+
+ARM64  029C: ADD(imm)          (raw=0x11000401)
+  VM   04B2: ADD_IMM R1, R0, 0x1
+  VM   04B9: AND_IMM R1, R1, 0xFFFFFFFF
+
+ARM64  02A0: ADD(ext)          (raw=0x8B21C262)
+  VM   04C0: SHL_IMM R17, R1, 0x20
+  VM   04C7: ASR_IMM R17, R17, 0x20
+  VM   04CE: ADD R2, R19, R17
+
+ARM64  02A4: SUBS(reg)         (raw=0xEB0200FF)
+  VM   04D2: CMP R7, R2
+
+ARM64  02A8: B.cond            (raw=0x540002C3)
+  VM   04D5: JB 0x058E
+
+ARM64  02AC: SUBS(imm)         (raw=0x7100003F)
+  VM   04DA: CMP R1, 0x0
+
+ARM64  02B0: B.cond            (raw=0x54FFFA8D)
+  VM   04E0: JLE 0x037B
+
+ARM64  02B4: ORR(reg)          (raw=0x2A0003E0)
+  VM   04E5: MOV R0, R0
+
+ARM64  02B8: SBFM              (raw=0x93407CC2)
+  VM   04E8: SHL_IMM R2, R6, 0x20
+  VM   04EF: ASR_IMM R2, R2, 0x20
+
+ARM64  02BC: ADD(imm)          (raw=0x91000400)
+  VM   04F6: ADD_IMM R0, R0, 0x1
+
+ARM64  02C0: ADD(reg)          (raw=0x8B000260)
+  VM   04FD: ADD R0, R19, R0
+
+ARM64  02C4: NOP               (raw=0xD503201F)
+  VM   0501: NOP
+
+ARM64  02C8: LDRB(reg)         (raw=0x38626A61)
+  VM   0502: ADD R17, R19, R2
+  VM   0506: LOAD8 R1, [R17 + 0]
+
+ARM64  02CC: STRB(imm)         (raw=0x38001661)
+  VM   050B: STORE8 [R19 + 0], R1
+  VM   0510: ADD_IMM R19, R19, 0x1
+
+ARM64  02D0: SUBS(reg)         (raw=0xEB13001F)
+  VM   0517: CMP R0, R19
+
+ARM64  02D4: B.cond            (raw=0x54FFFFA1)
+  VM   051A: JNE 0x0502
+
+ARM64  02D8: B                 (raw=0x17FFFFCA)
+  VM   051F: JMP 0x037B
+
+ARM64  02DC: ADD(imm)          (raw=0x910303A0)
+  VM   0524: ADD_IMM R0, R29, 0xC0
+
+ARM64  02E0: BL                (raw=0x97FFFE86)
+  VM   052B: CALL 0x100010B8
+
+ARM64  02E4: ADDS(imm)         (raw=0x313400DF)
+  VM   0534: ADD_IMM R17, R6, 0xD00
+  VM   053B: CMP R17, 0x0
+
+ARM64  02E8: ADD(imm)          (raw=0x11000800)
+  VM   0541: ADD_IMM R0, R0, 0x2
+  VM   0548: AND_IMM R0, R0, 0xFFFFFFFF
+
+ARM64  02EC: CSINC             (raw=0x1A80A400)
+  VM   054F: JGE 0x0563
+  VM   0554: MOV R0, R0
+  VM   0557: ADD_IMM R0, R0, 0x1
+  VM   055E: JMP 0x0566
+  VM   0563: MOV R0, R0
+
+ARM64  02F0: ADD(imm)          (raw=0x11000401)
+  VM   0566: ADD_IMM R1, R0, 0x1
+  VM   056D: AND_IMM R1, R1, 0xFFFFFFFF
+
+ARM64  02F4: ADD(ext)          (raw=0x8B21C262)
+  VM   0574: SHL_IMM R17, R1, 0x20
+  VM   057B: ASR_IMM R17, R17, 0x20
+  VM   0582: ADD R2, R19, R17
+
+ARM64  02F8: SUBS(reg)         (raw=0xEB0200FF)
+  VM   0586: CMP R7, R2
+
+ARM64  02FC: B.cond            (raw=0x54FFFD82)
+  VM   0589: JAE 0x04DA
+
+ARM64  0300: BL                (raw=0x97FFFE8E)
+  VM   058E: CALL 0x100010F8
+
+ARM64  0304: ADD(reg)          (raw=0x8B060286)
+  VM   0597: ADD R6, R20, R6
+
+ARM64  0308: AND(imm)          (raw=0x9274CE8E)
+  VM   059B: MOV R17, 0xFFFFFFFFFFFFF000
+  VM   05A5: AND R14, R20, R17
+
+ARM64  030C: AND(imm)          (raw=0x9274CCC6)
+  VM   05A9: MOV R17, 0xFFFFFFFFFFFFF000
+  VM   05B3: AND R6, R6, R17
+
+ARM64  0310: ORR(reg)          (raw=0xAA0E03E0)
+  VM   05B7: MOV R0, R14
+
+ARM64  0314: SUB(reg)          (raw=0xCB0E00C6)
+  VM   05BA: SUB R6, R6, R14
+
+ARM64  0318: MOVZ              (raw=0xD28000E2)
+  VM   05BE: MOV32 R2, 0x7
+
+ARM64  031C: ORR(reg)          (raw=0xAA0603E1)
+  VM   05C4: MOV R1, R6
+
+ARM64  0320: MOVZ              (raw=0xD2800643)
+  VM   05C7: MOV32 R3, 0x32
+
+ARM64  0324: MOVN              (raw=0x92800004)
+  VM   05CD: MOV R4, 0xFFFFFFFFFFFFFFFF
+
+ARM64  0328: MOVZ              (raw=0xD2800005)
+  VM   05D7: MOV32 R5, 0x0
+
+ARM64  032C: MOVZ              (raw=0x52801BC8)
+  VM   05DD: MOV32 R8, 0xDE
+
+ARM64  0330: SVC               (raw=0xD4000001)
+  VM   05E3: SVC #0x0
+
+ARM64  0334: SUBS(imm)         (raw=0xF100001F)
+  VM   05E6: CMP R0, 0x0
+
+ARM64  0338: CCMP(reg)         (raw=0xFA4EA000)
+  VM   05EC: CCMP_REG R0, R14, #0, cond=10 sf=1
+
+ARM64  033C: B.cond            (raw=0x54FFF0A0)
+  VM   05F2: JE 0x0259
+
+ARM64  0340: BL                (raw=0x97FFFE7E)
+  VM   05F7: CALL 0x100010F8
+
+ARM64  0344: LDRB(imm)         (raw=0x3940367C)
+  VM   0600: LOAD8 R28, [R19 + 13]
+
+ARM64  0348: ADD(imm)          (raw=0x91003A79)
+  VM   0605: ADD_IMM R25, R19, 0xE
+
+ARM64  034C: LDRB(imm)         (raw=0x39403260)
+  VM   060C: LOAD8 R0, [R19 + 12]
+
+ARM64  0350: STR(imm)          (raw=0xB900ABA0)
+  VM   0611: STORE32 [R29 + 168], R0
+
+ARM64  0354: ADD(ext)          (raw=0x8B3C0333)
+  VM   0616: AND_IMM R17, R28, 0xFF
+  VM   061D: ADD R19, R25, R17
+
+ARM64  0358: B                 (raw=0x17FFFF46)
+  VM   0621: JMP 0x00DA
+
+ARM64  035C: STP               (raw=0xA9061FA6)
+  VM   0626: STORE64 [R29 + 96], R6
+  VM   062B: STORE64 [R29 + 104], R7
+
+ARM64  0360: STR(imm)          (raw=0xB90073AC)
+  VM   0630: STORE32 [R29 + 112], R12
+
+ARM64  0364: STR(imm)          (raw=0xF9004BAD)
+  VM   0635: STORE64 [R29 + 144], R13
+
+ARM64  0368: BL                (raw=0x94000364)
+  VM   063A: CALL 0x100024B8
+
+ARM64  036C: LDR(imm)          (raw=0xB94073AC)
+  VM   0643: LOAD32 R12, [R29 + 112]
+
+ARM64  0370: LDP               (raw=0xA9461FA6)
+  VM   0648: LOAD64 R6, [R29 + 96]
+  VM   064D: LOAD64 R7, [R29 + 104]
+
+ARM64  0374: STR(imm)          (raw=0xF9004FA0)
+  VM   0652: STORE64 [R29 + 152], R0
+
+ARM64  0378: LDR(imm)          (raw=0xF9404BAD)
+  VM   0657: LOAD64 R13, [R29 + 144]
+
+ARM64  037C: B                 (raw=0x17FFFF7A)
+  VM   065C: JMP 0x0285
+
+ARM64  0380: LDR(imm)          (raw=0xB94016C1)
+  VM   0661: LOAD32 R1, [R22 + 20]
+
+ARM64  0384: ORR(reg)          (raw=0xAA1403E0)
+  VM   0666: MOV R0, R20
+
+ARM64  0388: STR(imm)          (raw=0xB900B3AC)
+  VM   0669: STORE32 [R29 + 176], R12
+
+ARM64  038C: BL                (raw=0x94000177)
+  VM   066E: CALL 0x10001D28
+
+ARM64  0390: SUBS(imm)         (raw=0x7100001F)
+  VM   0677: CMP R0, 0x0
+
+ARM64  0394: LDR(imm)          (raw=0xB940BFA0)
+  VM   067D: LOAD32 R0, [R29 + 188]
+
+ARM64  0398: LDR(imm)          (raw=0xB940B3AC)
+  VM   0682: LOAD32 R12, [R29 + 176]
+
+ARM64  039C: CSINC             (raw=0x1A9F0400)
+  VM   0687: MOV R15, 0x0
+  VM   0691: JE 0x06A5
+  VM   0696: MOV R0, R15
+  VM   0699: ADD_IMM R0, R0, 0x1
+  VM   06A0: JMP 0x06A8
+  VM   06A5: MOV R0, R0
+
+ARM64  03A0: STR(imm)          (raw=0xB900BFA0)
+  VM   06A8: STORE32 [R29 + 188], R0
+
+ARM64  03A4: B                 (raw=0x17FFFF3B)
+  VM   06AD: JMP 0x0110
+
+ARM64  03A8: STR(imm)          (raw=0xF9004FA3)
+  VM   06B2: STORE64 [R29 + 152], R3
+
+ARM64  03AC: ORR(reg)          (raw=0xAA1403E1)
+  VM   06B7: MOV R1, R20
+
+ARM64  03B0: STR(imm)          (raw=0xB900B3AC)
+  VM   06BA: STORE32 [R29 + 176], R12
+
+ARM64  03B4: ORR(reg)          (raw=0xAA1603E0)
+  VM   06BF: MOV R0, R22
+
+ARM64  03B8: BL                (raw=0x94000108)
+  VM   06C2: CALL 0x10001B98
+
+ARM64  03BC: SUBS(imm)         (raw=0x7100001F)
+  VM   06CB: CMP R0, 0x0
+
+ARM64  03C0: LDR(imm)          (raw=0xF9404FA3)
+  VM   06D1: LOAD64 R3, [R29 + 152]
+
+ARM64  03C4: LDR(imm)          (raw=0xB940BFA0)
+  VM   06D6: LOAD32 R0, [R29 + 188]
+
+ARM64  03C8: LDR(imm)          (raw=0xB940B3AC)
+  VM   06DB: LOAD32 R12, [R29 + 176]
+
+ARM64  03CC: CSINC             (raw=0x1A9F0400)
+  VM   06E0: MOV R15, 0x0
+  VM   06EA: JE 0x06FE
+  VM   06EF: MOV R0, R15
+  VM   06F2: ADD_IMM R0, R0, 0x1
+  VM   06F9: JMP 0x0701
+  VM   06FE: MOV R0, R0
+
+ARM64  03D0: STR(imm)          (raw=0xB900BFA0)
+  VM   0701: STORE32 [R29 + 188], R0
+
+ARM64  03D4: LDR(imm)          (raw=0xB94AF460)
+  VM   0706: LOAD32 R0, [R3 + 2804]
+
+ARM64  03D8: TBZ               (raw=0x362FE5C0)
+  VM   070B: TBZ R0, #5, 0x0110
+
+ARM64  03DC: B                 (raw=0x17FFFFE9)
+  VM   0712: JMP 0x0661
+
+ARM64  03E0: LDRH(imm)         (raw=0x79401802)
+  VM   0717: LOAD16 R2, [R0 + 12]
+
+ARM64  03E4: MOVZ              (raw=0x52800381)
+  VM   071C: MOV32 R1, 0x1C
+
+ARM64  03E8: LDRH(imm)         (raw=0x79401C03)
+  VM   0722: LOAD16 R3, [R0 + 14]
+
+ARM64  03EC: ADD(reg)          (raw=0x0B030042)
+  VM   0727: ADD R2, R2, R3
+  VM   072B: AND_IMM R2, R2, 0xFFFFFFFF
+
+ARM64  03F0: ADD(reg)          (raw=0x0B020442)
+  VM   0732: SHL_IMM R17, R2, 0x1
+  VM   0739: ADD R2, R2, R17
+  VM   073D: AND_IMM R2, R2, 0xFFFFFFFF
+
+ARM64  03F4: UBFM              (raw=0x531E7442)
+  VM   0744: SHL_IMM R2, R2, 0x2
+  VM   074B: AND_IMM R2, R2, 0xFFFFFFFF
+
+ARM64  03F8: ADD(imm)          (raw=0x11008042)
+  VM   0752: ADD_IMM R2, R2, 0x20
+  VM   0759: AND_IMM R2, R2, 0xFFFFFFFF
+
+ARM64  03FC: STR(imm)          (raw=0xB90083A2)
+  VM   0760: STORE32 [R29 + 128], R2
+
+ARM64  0400: ORR(reg)          (raw=0x2A0203F3)
+  VM   0765: MOV R19, R2
+
+ARM64  0404: BL                (raw=0x940000CD)
+  VM   0768: CALL 0x10001AF8
+
+ARM64  0408: ADD(ext)          (raw=0x8B33C313)
+  VM   0771: SHL_IMM R17, R19, 0x20
+  VM   0778: ASR_IMM R17, R17, 0x20
+  VM   077F: ADD R19, R24, R17
+
+ARM64  040C: LDR(imm)          (raw=0xB9401F01)
+  VM   0783: LOAD32 R1, [R24 + 28]
+
+ARM64  0410: SUBS(reg)         (raw=0x6B00003F)
+  VM   0788: CMP R1, R0
+
+ARM64  0414: B.cond            (raw=0x54FFF761)
+  VM   078B: JNE 0x058E
+
+ARM64  0418: ADRP              (raw=0x90000003)
+  VM   0790: MOV R3, 0x10001000
+
+ARM64  041C: LDR(imm)          (raw=0xB9400702)
+  VM   079A: LOAD32 R2, [R24 + 4]
+
+ARM64  0420: LDR(imm)          (raw=0xB94AF461)
+  VM   079F: LOAD32 R1, [R3 + 2804]
+
+ARM64  0424: LDR(imm)          (raw=0xB94AF460)
+  VM   07A4: LOAD32 R0, [R3 + 2804]
+
+ARM64  0428: SUBS(reg)         (raw=0x6B01005F)
+  VM   07A9: CMP R2, R1
+
+ARM64  042C: CSINC             (raw=0x1A9F07E1)
+  VM   07AC: MOV R14, 0x0
+  VM   07B6: MOV R15, 0x0
+  VM   07C0: JE 0x07D4
+  VM   07C5: MOV R1, R15
+  VM   07C8: ADD_IMM R1, R1, 0x1
+  VM   07CF: JMP 0x07D7
+  VM   07D4: MOV R1, R14
+
+ARM64  0430: STP               (raw=0x291707BF)
+  VM   07D7: STORE32 [R29 + 184], R31
+  VM   07DC: STORE32 [R29 + 188], R1
+
+ARM64  0434: TBNZ              (raw=0x37080140)
+  VM   07E1: TBNZ R0, #1, 0x081D
+
+ARM64  0438: LDR(imm)          (raw=0xB94AF460)
+  VM   07E8: LOAD32 R0, [R3 + 2804]
+
+ARM64  043C: ORR(reg)          (raw=0xAA1803F6)
+  VM   07ED: MOV R22, R24
+
+ARM64  0440: STR(imm)          (raw=0xF9003FBF)
+  VM   07F0: MOV32 R16, 0x0
+  VM   07F6: STORE64 [R29 + 120], R16
+
+ARM64  0444: TBZ               (raw=0x361FE040)
+  VM   07FB: TBZ R0, #3, 0x00A1
+
+ARM64  0448: BL                (raw=0x9400032C)
+  VM   0802: CALL 0x100024B8
+
+ARM64  044C: STR(imm)          (raw=0xF9003FA0)
+  VM   080B: STORE64 [R29 + 120], R0
+
+ARM64  0450: B                 (raw=0x17FFFEFF)
+  VM   0810: JMP 0x00A1
+
+ARM64  0454: ORR(reg)          (raw=0xAA0003F3)
+  VM   0815: MOV R19, R0
+
+ARM64  0458: B                 (raw=0x17FFFF62)
+  VM   0818: JMP 0x0357
+
+ARM64  045C: STR(imm)          (raw=0xF9005BA3)
+  VM   081D: STORE64 [R29 + 176], R3
+
+ARM64  0460: BL                (raw=0x940002AE)
+  VM   0822: CALL 0x100022D8
+
+ARM64  0464: LDR(imm)          (raw=0xF9405BA3)
+  VM   082B: LOAD64 R3, [R29 + 176]
+
+ARM64  0468: UBFM              (raw=0x531F7C00)
+  VM   0830: SHR_IMM R0, R0, 0x1F
+  VM   0837: AND_IMM R0, R0, 0xFFFFFFFF
+
+ARM64  046C: STR(imm)          (raw=0xB900BBA0)
+  VM   083E: STORE32 [R29 + 184], R0
+
+ARM64  0470: B                 (raw=0x17FFFFF2)
+  VM   0843: JMP 0x07E8
+
+ARM64  0474: SUB(reg)          (raw=0xCB080042)
+  VM   0848: SUB R2, R2, R8
+
+ARM64  0478: LDR(imm)          (raw=0xB94077A0)
+  VM   084C: LOAD32 R0, [R29 + 116]
+
+ARM64  047C: SUB(reg)          (raw=0xCB140273)
+  VM   0851: SUB R19, R19, R20
+
+ARM64  0480: SUBS(imm)         (raw=0x7100005F)
+  VM   0855: CMP R2, 0x0
+
+ARM64  0484: CCMP(reg)         (raw=0x7A53A000)
+  VM   085B: CCMP_REG R0, R19, #0, cond=10 sf=0
+
+ARM64  0488: B.cond            (raw=0x54FFF3C3)
+  VM   0861: JB 0x058E
+
+ARM64  048C: MOVZ              (raw=0xD280001C)
+  VM   0866: MOV32 R28, 0x0
+
+ARM64  0490: CBZ               (raw=0xB4000096)
+  VM   086C: CMP R22, 0x0
+  VM   0872: JE 0x088D
+
+ARM64  0494: ADRP              (raw=0x90000000)
+  VM   0877: MOV R0, 0x10001000
+
+ARM64  0498: LDR(imm)          (raw=0xB94AF400)
+  VM   0881: LOAD32 R0, [R0 + 2804]
+
+ARM64  049C: TBNZ              (raw=0x37181300)
+  VM   0886: TBNZ R0, #3, 0x0D06
+
+ARM64  04A0: LDRB(imm)         (raw=0x39400280)
+  VM   088D: LOAD8 R0, [R20 + 0]
+
+ARM64  04A4: SUBS(imm)         (raw=0x7101FC1F)
+  VM   0892: CMP R0, 0x7F
+
+ARM64  04A8: B.cond            (raw=0x54FFF2C1)
+  VM   0898: JNE 0x058E
+
+ARM64  04AC: LDRB(imm)         (raw=0x39400680)
+  VM   089D: LOAD8 R0, [R20 + 1]
+
+ARM64  04B0: SUBS(imm)         (raw=0x7101141F)
+  VM   08A2: CMP R0, 0x45
+
+ARM64  04B4: B.cond            (raw=0x54FFF261)
+  VM   08A8: JNE 0x058E
+
+ARM64  04B8: LDRB(imm)         (raw=0x39400A80)
+  VM   08AD: LOAD8 R0, [R20 + 2]
+
+ARM64  04BC: SUBS(imm)         (raw=0x7101301F)
+  VM   08B2: CMP R0, 0x4C
+
+ARM64  04C0: B.cond            (raw=0x54FFF201)
+  VM   08B8: JNE 0x058E
+
+ARM64  04C4: LDRB(imm)         (raw=0x39400E80)
+  VM   08BD: LOAD8 R0, [R20 + 3]
+
+ARM64  04C8: SUBS(imm)         (raw=0x7101181F)
+  VM   08C2: CMP R0, 0x46
+
+ARM64  04CC: B.cond            (raw=0x54FFF1A1)
+  VM   08C8: JNE 0x058E
+
+ARM64  04D0: CBZ               (raw=0xB4000116)
+  VM   08CD: CMP R22, 0x0
+  VM   08D3: JE 0x0906
+
+ARM64  04D4: ADRP              (raw=0x90000003)
+  VM   08D8: MOV R3, 0x10001000
+
+ARM64  04D8: LDR(imm)          (raw=0xB94AF460)
+  VM   08E2: LOAD32 R0, [R3 + 2804]
+
+ARM64  04DC: TBNZ              (raw=0x37001160)
+  VM   08E7: TBNZ R0, #0, 0x0D17
+
+ARM64  04E0: LDR(imm)          (raw=0xB94AF460)
+  VM   08EE: LOAD32 R0, [R3 + 2804]
+
+ARM64  04E4: TBNZ              (raw=0x37100CA0)
+  VM   08F3: TBNZ R0, #2, 0x0C0C
+
+ARM64  04E8: LDR(imm)          (raw=0xB94AF460)
+  VM   08FA: LOAD32 R0, [R3 + 2804]
+
+ARM64  04EC: TBNZ              (raw=0x37180E00)
+  VM   08FF: TBNZ R0, #3, 0x0C6A
+
+ARM64  04F0: LDP               (raw=0x295703A1)
+  VM   0906: LOAD32 R1, [R29 + 184]
+  VM   090B: LOAD32 R0, [R29 + 188]
+
+ARM64  04F4: ORR(reg)          (raw=0x2A010019)
+  VM   0910: OR R25, R0, R1
+  VM   0914: AND_IMM R25, R25, 0xFFFFFFFF
+
+ARM64  04F8: CBNZ              (raw=0x35FFF059)
+  VM   091B: CMP R25, 0x0
+  VM   0921: JNE 0x058E
+
+ARM64  04FC: LDR(imm)          (raw=0xB940A7A0)
+  VM   0926: LOAD32 R0, [R29 + 164]
+
+ARM64  0500: SUBS(imm)         (raw=0x7101481F)
+  VM   092B: CMP R0, 0x52
+
+ARM64  0504: B.cond            (raw=0x540008C0)
+  VM   0931: JE 0x0B39
+
+ARM64  0508: ADD(ext)          (raw=0x8B334281)
+  VM   0936: AND_IMM R17, R19, 0xFFFFFFFF
+  VM   093D: ADD R1, R20, R17
+
+ARM64  050C: ORR(reg)          (raw=0xAA1403E0)
+  VM   0941: MOV R0, R20
+
+ARM64  0510: BL                (raw=0x94000312)
+  VM   0944: CALL 0x10002518
+
+ARM64  0514: CBZ               (raw=0xB4000096)
+  VM   094D: CMP R22, 0x0
+  VM   0953: JE 0x096E
+
+ARM64  0518: ADRP              (raw=0x90000000)
+  VM   0958: MOV R0, 0x10001000
+
+ARM64  051C: LDR(imm)          (raw=0xB94AF400)
+  VM   0962: LOAD32 R0, [R0 + 2804]
+
+ARM64  0520: TBNZ              (raw=0x37200E60)
+  VM   0967: TBNZ R0, #4, 0x0CF0
+
+ARM64  0524: LDR(imm)          (raw=0xB940B3A1)
+  VM   096E: LOAD32 R1, [R29 + 176]
+
+ARM64  0528: MOVZ              (raw=0xD2800000)
+  VM   0973: MOV32 R0, 0x0
+
+ARM64  052C: MOVZ              (raw=0xD2800006)
+  VM   0979: MOV32 R6, 0x0
+
+ARM64  0530: CBNZ              (raw=0x350009A1)
+  VM   097F: CMP R1, 0x0
+  VM   0985: JNE 0x0BF1
+
+ARM64  0534: LDR(imm)          (raw=0xF9400343)
+  VM   098A: LOAD64 R3, [R26 + 0]
+
+ARM64  0538: UBFM              (raw=0xD37DF063)
+  VM   098F: SHL_IMM R3, R3, 0x3
+
+ARM64  053C: ADD(imm)          (raw=0x91004063)
+  VM   0996: ADD_IMM R3, R3, 0x10
+
+ARM64  0540: ADD(reg)          (raw=0x8B030342)
+  VM   099D: ADD R2, R26, R3
+
+ARM64  0544: LDR(reg)          (raw=0xF8636B41)
+  VM   09A1: ADD R17, R26, R3
+  VM   09A5: LOAD64 R1, [R17 + 0]
+
+ARM64  0548: CBZ               (raw=0xB4000081)
+  VM   09AA: CMP R1, 0x0
+  VM   09B0: JE 0x09CD
+
+ARM64  054C: NOP               (raw=0xD503201F)
+  VM   09B5: NOP
+
+ARM64  0550: LDR(imm)          (raw=0xF8408C41)
+  VM   09B6: LOAD64 R1, [R2 + 8]
+  VM   09BB: ADD_IMM R2, R2, 0x8
+
+ARM64  0554: CBNZ              (raw=0xB5FFFFE1)
+  VM   09C2: CMP R1, 0x0
+  VM   09C8: JNE 0x09B6
+
+ARM64  0558: LDR(imm)          (raw=0xF9400443)
+  VM   09CD: LOAD64 R3, [R2 + 8]
+
+ARM64  055C: ADD(imm)          (raw=0x91002042)
+  VM   09D2: ADD_IMM R2, R2, 0x8
+
+ARM64  0560: CBZ               (raw=0xB4000363)
+  VM   09D9: CMP R3, 0x0
+  VM   09DF: JE 0x0A96
+
+ARM64  0564: LDR(imm)          (raw=0xF94047A1)
+  VM   09E4: LOAD64 R1, [R29 + 136]
+
+ARM64  0568: ADD(reg)          (raw=0x8B1B0287)
+  VM   09E9: ADD R7, R20, R27
+
+ARM64  056C: LDRH(imm)         (raw=0x794143A4)
+  VM   09ED: LOAD16 R4, [R29 + 160]
+
+ARM64  0570: MOVZ              (raw=0xD2800705)
+  VM   09F2: MOV32 R5, 0x38
+
+ARM64  0574: ADD(reg)          (raw=0x8B010281)
+  VM   09F8: ADD R1, R20, R1
+
+ARM64  0578: B                 (raw=0x14000010)
+  VM   09FC: JMP 0x0A6F
+
+ARM64  057C: SUBS(imm)         (raw=0xF100147F)
+  VM   0A01: CMP R3, 0x5
+
+ARM64  0580: B.cond            (raw=0x540003E0)
+  VM   0A07: JE 0x0B05
+
+ARM64  0584: SUBS(imm)         (raw=0xF100107F)
+  VM   0A0C: CMP R3, 0x4
+
+ARM64  0588: B.cond            (raw=0x540003E0)
+  VM   0A12: JE 0x0B0F
+
+ARM64  058C: SUBS(imm)         (raw=0xF100247F)
+  VM   0A17: CMP R3, 0x9
+
+ARM64  0590: B.cond            (raw=0x540003E0)
+  VM   0A1D: JE 0x0B19
+
+ARM64  0594: SUBS(imm)         (raw=0xF1001C7F)
+  VM   0A22: CMP R3, 0x7
+
+ARM64  0598: B.cond            (raw=0x540000C1)
+  VM   0A28: JNE 0x0A58
+
+ARM64  059C: LDR(imm)          (raw=0xB94087A3)
+  VM   0A2D: LOAD32 R3, [R29 + 132]
+
+ARM64  05A0: SUBS(imm)         (raw=0x7100007F)
+  VM   0A32: CMP R3, 0x0
+
+ARM64  05A4: CSEL              (raw=0x9A9F10C3)
+  VM   0A38: MOV R15, 0x0
+  VM   0A42: JNE 0x0A4F
+  VM   0A47: MOV R3, R15
+  VM   0A4A: JMP 0x0A52
+  VM   0A4F: MOV R3, R6
+
+ARM64  05A8: STR(imm)          (raw=0xF9000443)
+  VM   0A52: STORE64 [R2 + 8], R3
+
+ARM64  05AC: NOP               (raw=0xD503201F)
+  VM   0A57: NOP
+
+ARM64  05B0: LDR(imm)          (raw=0xF8410C43)
+  VM   0A58: LOAD64 R3, [R2 + 16]
+  VM   0A5D: ADD_IMM R2, R2, 0x10
+
+ARM64  05B4: CBZ               (raw=0xB40000C3)
+  VM   0A64: CMP R3, 0x0
+  VM   0A6A: JE 0x0A96
+
+ARM64  05B8: SUBS(imm)         (raw=0xF1000C7F)
+  VM   0A6F: CMP R3, 0x3
+
+ARM64  05BC: B.cond            (raw=0x54FFFE01)
+  VM   0A75: JNE 0x0A01
+
+ARM64  05C0: STR(imm)          (raw=0xF9000441)
+  VM   0A7A: STORE64 [R2 + 8], R1
+
+ARM64  05C4: LDR(imm)          (raw=0xF8410C43)
+  VM   0A7F: LOAD64 R3, [R2 + 16]
+  VM   0A84: ADD_IMM R2, R2, 0x10
+
+ARM64  05C8: CBNZ              (raw=0xB5FFFF83)
+  VM   0A8B: CMP R3, 0x0
+  VM   0A91: JNE 0x0A6F
+
+ARM64  05CC: LDR(imm)          (raw=0xB940B3A1)
+  VM   0A96: LOAD32 R1, [R29 + 176]
+
+ARM64  05D0: CBNZ              (raw=0x35000081)
+  VM   0A9B: CMP R1, 0x0
+  VM   0AA1: JNE 0x0AC0
+
+ARM64  05D4: ADD(reg)          (raw=0x8B1B0280)
+  VM   0AA6: ADD R0, R20, R27
+
+ARM64  05D8: SUBS(imm)         (raw=0x71000EFF)
+  VM   0AAA: CMP R23, 0x3
+
+ARM64  05DC: CSEL              (raw=0x9A9B0000)
+  VM   0AB0: JE 0x0ABD
+  VM   0AB5: MOV R0, R27
+  VM   0AB8: JMP 0x0AC0
+  VM   0ABD: MOV R0, R0
+
+ARM64  05E0: LDP               (raw=0xA94153F3)
+  VM   0AC0: LOAD64 R19, [R31 + 16]
+  VM   0AC5: LOAD64 R20, [R31 + 24]
+
+ARM64  05E4: LDP               (raw=0xA9425BF5)
+  VM   0ACA: LOAD64 R21, [R31 + 32]
+  VM   0ACF: LOAD64 R22, [R31 + 40]
+
+ARM64  05E8: LDP               (raw=0xA94363F7)
+  VM   0AD4: LOAD64 R23, [R31 + 48]
+  VM   0AD9: LOAD64 R24, [R31 + 56]
+
+ARM64  05EC: LDP               (raw=0xA9446BF9)
+  VM   0ADE: LOAD64 R25, [R31 + 64]
+  VM   0AE3: LOAD64 R26, [R31 + 72]
+
+ARM64  05F0: LDP               (raw=0xA94573FB)
+  VM   0AE8: LOAD64 R27, [R31 + 80]
+  VM   0AED: LOAD64 R28, [R31 + 88]
+
+ARM64  05F4: LDP               (raw=0xA8CD7BFD)
+  VM   0AF2: LOAD64 R29, [R31 + 0]
+  VM   0AF7: LOAD64 R30, [R31 + 8]
+  VM   0AFC: ADD_IMM R31, R31, 0xD0
+
+ARM64  05F8: RET               (raw=0xD65F03C0)
+  VM   0B03: RET R0
+
+ARM64  05FC: STR(imm)          (raw=0xF9000444)
+  VM   0B05: STORE64 [R2 + 8], R4
+
+ARM64  0600: B                 (raw=0x17FFFFEC)
+  VM   0B0A: JMP 0x0A58
+
+ARM64  0604: STR(imm)          (raw=0xF9000445)
+  VM   0B0F: STORE64 [R2 + 8], R5
+
+ARM64  0608: B                 (raw=0x17FFFFEA)
+  VM   0B14: JMP 0x0A58
+
+ARM64  060C: SUBS(imm)         (raw=0x71000EFF)
+  VM   0B19: CMP R23, 0x3
+
+ARM64  0610: CSEL              (raw=0x9A9B00E3)
+  VM   0B1F: JE 0x0B2C
+  VM   0B24: MOV R3, R27
+  VM   0B27: JMP 0x0B2F
+  VM   0B2C: MOV R3, R7
+
+ARM64  0614: STR(imm)          (raw=0xF9000443)
+  VM   0B2F: STORE64 [R2 + 8], R3
+
+ARM64  0618: B                 (raw=0x17FFFFE6)
+  VM   0B34: JMP 0x0A58
+
+ARM64  061C: UBFM              (raw=0x53027E62)
+  VM   0B39: SHR_IMM R2, R19, 0x2
+  VM   0B40: AND_IMM R2, R2, 0xFFFFFFFF
+
+ARM64  0620: CBZ               (raw=0x34FFF742)
+  VM   0B47: CMP R2, 0x0
+  VM   0B4D: JE 0x0936
+
+ARM64  0624: SUB(imm)          (raw=0x51000442)
+  VM   0B52: SUB_IMM R2, R2, 0x1
+  VM   0B59: AND_IMM R2, R2, 0xFFFFFFFF
+
+ARM64  0628: ADD(ext)          (raw=0x8B224A83)
+  VM   0B60: AND_IMM R17, R2, 0xFFFFFFFF
+  VM   0B67: SHL_IMM R17, R17, 0x2
+  VM   0B6E: ADD R3, R20, R17
+
+ARM64  062C: B                 (raw=0x14000002)
+  VM   0B72: JMP 0x0B85
+
+ARM64  0630: SUB(imm)          (raw=0x51000442)
+  VM   0B77: SUB_IMM R2, R2, 0x1
+  VM   0B7E: AND_IMM R2, R2, 0xFFFFFFFF
+
+ARM64  0634: LDR(imm)          (raw=0xB9400060)
+  VM   0B85: LOAD32 R0, [R3 + 0]
+
+ARM64  0638: UBFM              (raw=0xD35A7801)
+  VM   0B8A: SHR_IMM R1, R0, 0x1A
+  VM   0B91: AND_IMM R1, R1, 0x7FFFFFFF
+
+ARM64  063C: SUBS(imm)         (raw=0x7100143F)
+  VM   0B98: CMP R1, 0x5
+
+ARM64  0640: B.cond            (raw=0x540000C1)
+  VM   0B9E: JNE 0x0BDA
+
+ARM64  0644: SUB(reg)          (raw=0x4B020001)
+  VM   0BA3: SUB R1, R0, R2
+  VM   0BA7: AND_IMM R1, R1, 0xFFFFFFFF
+
+ARM64  0648: AND(imm)          (raw=0x12061400)
+  VM   0BAE: AND_IMM R0, R0, 0xFC000000
+  VM   0BB5: AND_IMM R0, R0, 0xFFFFFFFF
+
+ARM64  064C: AND(imm)          (raw=0x12006421)
+  VM   0BBC: AND_IMM R1, R1, 0x3FFFFFF
+  VM   0BC3: AND_IMM R1, R1, 0xFFFFFFFF
+
+ARM64  0650: ORR(reg)          (raw=0x2A010000)
+  VM   0BCA: OR R0, R0, R1
+  VM   0BCE: AND_IMM R0, R0, 0xFFFFFFFF
+
+ARM64  0654: STR(imm)          (raw=0xB9000060)
+  VM   0BD5: STORE32 [R3 + 0], R0
+
+ARM64  0658: SUB(imm)          (raw=0xD1001063)
+  VM   0BDA: SUB_IMM R3, R3, 0x4
+
+ARM64  065C: CBNZ              (raw=0x35FFFEA2)
+  VM   0BE1: CMP R2, 0x0
+  VM   0BE7: JNE 0x0B77
+
+ARM64  0660: B                 (raw=0x17FFFFAA)
+  VM   0BEC: JMP 0x0936
+
+ARM64  0664: ADD(imm)          (raw=0x9100A2A0)
+  VM   0BF1: ADD_IMM R0, R21, 0x28
+
+ARM64  0668: BL                (raw=0x97FFFDB8)
+  VM   0BF8: CALL 0x10001108
+
+ARM64  066C: ORR(reg)          (raw=0xAA0003E6)
+  VM   0C01: MOV R6, R0
+
+ARM64  0670: ORR(reg)          (raw=0xAA0103E0)
+  VM   0C04: MOV R0, R1
+
+ARM64  0674: B                 (raw=0x17FFFFB0)
+  VM   0C07: JMP 0x098A
+
+ARM64  0678: STR(imm)          (raw=0xF90057A3)
+  VM   0C0C: STORE64 [R29 + 168], R3
+
+ARM64  067C: BL                (raw=0x94000231)
+  VM   0C11: CALL 0x10002300
+
+ARM64  0680: SUBS(imm)         (raw=0x7100001F)
+  VM   0C1A: CMP R0, 0x0
+
+ARM64  0684: LDR(imm)          (raw=0xB940BBA0)
+  VM   0C20: LOAD32 R0, [R29 + 184]
+
+ARM64  0688: MOVZ              (raw=0x52800039)
+  VM   0C25: MOV32 R25, 0x1
+
+ARM64  068C: CSEL              (raw=0x1A990000)
+  VM   0C2B: JE 0x0C38
+  VM   0C30: MOV R0, R25
+  VM   0C33: JMP 0x0C3B
+  VM   0C38: MOV R0, R0
+
+ARM64  0690: STR(imm)          (raw=0xB900BBA0)
+  VM   0C3B: STORE32 [R29 + 184], R0
+
+ARM64  0694: BL                (raw=0x94000265)
+  VM   0C40: CALL 0x100023E8
+
+ARM64  0698: LDR(imm)          (raw=0xF94057A3)
+  VM   0C49: LOAD64 R3, [R29 + 168]
+
+ARM64  069C: CBZ               (raw=0x34FFF260)
+  VM   0C4E: CMP R0, 0x0
+  VM   0C54: JE 0x08FA
+
+ARM64  06A0: LDR(imm)          (raw=0xB94AF460)
+  VM   0C59: LOAD32 R0, [R3 + 2804]
+
+ARM64  06A4: STR(imm)          (raw=0xB900BBB9)
+  VM   0C5E: STORE32 [R29 + 184], R25
+
+ARM64  06A8: TBZ               (raw=0x361FE2C0)
+  VM   0C63: TBZ R0, #3, 0x058E
+
+ARM64  06AC: LDR(imm)          (raw=0xB9401AC2)
+  VM   0C6A: LOAD32 R2, [R22 + 24]
+
+ARM64  06B0: LDR(imm)          (raw=0xF9404FA1)
+  VM   0C6F: LOAD64 R1, [R29 + 152]
+
+ARM64  06B4: LDR(imm)          (raw=0xF9403FB9)
+  VM   0C74: LOAD64 R25, [R29 + 120]
+
+ARM64  06B8: ORR(reg)          (raw=0xAA1903E0)
+  VM   0C79: MOV R0, R25
+
+ARM64  06BC: BL                (raw=0x94000291)
+  VM   0C7C: CALL 0x100024C0
+
+ARM64  06C0: SUBS(imm)         (raw=0x7100001F)
+  VM   0C85: CMP R0, 0x0
+
+ARM64  06C4: LDR(imm)          (raw=0xB9401AC2)
+  VM   0C8B: LOAD32 R2, [R22 + 24]
+
+ARM64  06C8: ORR(reg)          (raw=0xAA1C03E1)
+  VM   0C90: MOV R1, R28
+
+ARM64  06CC: LDR(imm)          (raw=0xB940BBA0)
+  VM   0C93: LOAD32 R0, [R29 + 184]
+
+ARM64  06D0: CSINC             (raw=0x1A9F0400)
+  VM   0C98: MOV R15, 0x0
+  VM   0CA2: JE 0x0CB6
+  VM   0CA7: MOV R0, R15
+  VM   0CAA: ADD_IMM R0, R0, 0x1
+  VM   0CB1: JMP 0x0CB9
+  VM   0CB6: MOV R0, R0
+
+ARM64  06D4: ADD(reg)          (raw=0x0B020442)
+  VM   0CB9: SHL_IMM R17, R2, 0x1
+  VM   0CC0: ADD R2, R2, R17
+  VM   0CC4: AND_IMM R2, R2, 0xFFFFFFFF
+
+ARM64  06D8: STR(imm)          (raw=0xB900BBA0)
+  VM   0CCB: STORE32 [R29 + 184], R0
+
+ARM64  06DC: ORR(reg)          (raw=0xAA1903E0)
+  VM   0CD0: MOV R0, R25
+
+ARM64  06E0: BL                (raw=0x94000288)
+  VM   0CD3: CALL 0x100024C0
+
+ARM64  06E4: CBZ               (raw=0x34FFF060)
+  VM   0CDC: CMP R0, 0x0
+  VM   0CE2: JE 0x0906
+
+ARM64  06E8: BL                (raw=0x97FFFD94)
+  VM   0CE7: CALL 0x100010F8
+
+ARM64  06EC: LDR(imm)          (raw=0xB94083A1)
+  VM   0CF0: LOAD32 R1, [R29 + 128]
+
+ARM64  06F0: ORR(reg)          (raw=0xAA1803E0)
+  VM   0CF5: MOV R0, R24
+
+ARM64  06F4: BL                (raw=0x94000291)
+  VM   0CF8: CALL 0x100024F8
+
+ARM64  06F8: B                 (raw=0x17FFFF8B)
+  VM   0D01: JMP 0x096E
+
+ARM64  06FC: BL                (raw=0x9400027F)
+  VM   0D06: CALL 0x100024B8
+
+ARM64  0700: ORR(reg)          (raw=0xAA0003FC)
+  VM   0D0F: MOV R28, R0
+
+ARM64  0704: B                 (raw=0x17FFFF67)
+  VM   0D12: JMP 0x088D
+
+ARM64  0708: STR(imm)          (raw=0xF90057A3)
+  VM   0D17: STORE64 [R29 + 168], R3
+
+ARM64  070C: ORR(reg)          (raw=0xAA1403E2)
+  VM   0D1C: MOV R2, R20
+
+ARM64  0710: ORR(reg)          (raw=0xAA1803E1)
+  VM   0D1F: MOV R1, R24
+
+ARM64  0714: ORR(reg)          (raw=0xAA1603E0)
+  VM   0D22: MOV R0, R22
+
+ARM64  0718: BL                (raw=0x94000060)
+  VM   0D25: CALL 0x10001C58
+
+ARM64  071C: SUBS(imm)         (raw=0x7100001F)
+  VM   0D2E: CMP R0, 0x0
+
+ARM64  0720: LDR(imm)          (raw=0xB940BFA0)
+  VM   0D34: LOAD32 R0, [R29 + 188]
+
+ARM64  0724: LDR(imm)          (raw=0xF94057A3)
+  VM   0D39: LOAD64 R3, [R29 + 168]
+
+ARM64  0728: CSINC             (raw=0x1A9F0400)
+  VM   0D3E: MOV R15, 0x0
+  VM   0D48: JE 0x0D5C
+  VM   0D4D: MOV R0, R15
+  VM   0D50: ADD_IMM R0, R0, 0x1
+  VM   0D57: JMP 0x0D5F
+  VM   0D5C: MOV R0, R0
+
+ARM64  072C: STR(imm)          (raw=0xB900BFA0)
+  VM   0D5F: STORE32 [R29 + 188], R0
+
+ARM64  0730: B                 (raw=0x17FFFF6C)
+  VM   0D64: JMP 0x08EE
+

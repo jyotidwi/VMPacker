@@ -1,0 +1,24 @@
+﻿/bin/sh: line 1: 30349 Segmentation fault      /home/root/vmp/demo_dbg4 > /dev/null 2> /tmp/d4.txt
+
+---
+
+PC=0f88 OP=2a R0=ffffffff0000ffff R1=0000007fe9094c30
+
+PC=0f82 OP=2a R0=ffffffff0000ffff R1=0000007fe9094c30
+
+PC=0f7c OP=2a R0=ffffffff0000ffff R1=0000007fe9094c30
+
+PC=0f78 OP=2f R0=ffffffff0000ffff R1=0000007fe9094c30
+
+PC=0f72 OP=2a R0=ffffffff0000ffff R1=0000007fe9094c30
+
+PC=0f6c OP=2a R0=ffffffff0000ffff R1=0000007fe9094c30
+
+PC=0f68 OP=2f R0=ffffffff0000ffff R1=0000007fe9094c30
+
+PC=0f62 OP=2a R0=ffffffff0000ffff R1=0000007fe9094c30
+
+PC=0f5c OP=2a R0=ffffffff0000ffff R1=0000007fe9094c30
+
+PC=0f56 OP=a4 R0=ffffffff0000ffff R1=0000007fe9094c30
+

@@ -1,0 +1,26 @@
+========================================
+  vmpacker - ARM64 ELF VMP ??????
+========================================
+[*] ???: demo\demo_split_packed
+[*] ???: demo\vmp_phF
+[*] ??????: []
+
+[*] ELF: EM_AARCH64, Type: ET_EXEC
+[*] VM interp blob: 7744 bytes
+
+[*] Processing: stub_phase_F
+    Addr: 0x10001700, Size: 648 bytes, Section: __LOAD_X
+    Instructions: 162
+    Translated: 162/162
+    Bytecode: 2498 bytes
+
+[*] Injecting 1 functions...
+    Payload at file offset: 0x46000, VA: 0x10050000, size: 10436
+    VM interp VA: 0x10050000
+    [stub_phase_F] bytecode VA: 0x10051E28, len: 2716
+    PT_NOTE[1] -> PT_LOAD RX: off=0x46000 va=0x10050000 sz=0x28C4
+    [+] stub_phase_F VMP protected
+
+[+] Output: demo\vmp_phF
+
+[+] VMP ??????!

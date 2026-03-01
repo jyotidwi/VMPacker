@@ -22,7 +22,7 @@ import (
 //   翻译为自定义 VM 字节码，替换原函数为 VM 跳板。
 // ============================================================
 
-//go:embed vm_interp.bin
+//go:embed vm_interp_ollvm.bin
 var interpBlob []byte
 
 func main() {
@@ -32,7 +32,7 @@ func main() {
 	verbose := flag.Bool("v", false, "详细输出（显示反汇编）")
 	strip := flag.Bool("strip", true, "清除符号表（防止strip破坏保护）")
 	debug := flag.Bool("debug", false, "生成 debug 对照文件（ARM64 → VM 字节码映射）")
-	tokenEntry := flag.Bool("token", false, "启用 Token 化入口模式（3 指令跳板）")
+	tokenEntry := flag.Bool("token", true, "启用 Token 化入口模式（3 指令跳板）— 默认开启")
 	info := flag.Bool("info", false, "仅打印 ELF 信息，不做保护")
 
 	flag.Usage = func() {

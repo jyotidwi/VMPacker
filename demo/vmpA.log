@@ -1,0 +1,26 @@
+========================================
+  vmpacker - ARM64 ELF VMP ??????
+========================================
+[*] ???: demo\vmp_test_demo
+[*] ???: demo\vmp_demo_A
+[*] ??????: []
+
+[*] ELF: EM_AARCH64, Type: ET_EXEC
+[*] VM interp blob: 7744 bytes
+
+[*] Processing: test_arith
+    Addr: 0x400640, Size: 160 bytes, Section: .text
+    Instructions: 40
+    Translated: 40/40
+    Bytecode: 633 bytes
+
+[*] Injecting 1 functions...
+    Payload at file offset: 0x4A8000, VA: 0x4A0000, size: 8408
+    VM interp VA: 0x4A0000
+    [test_arith] bytecode VA: 0x4A1E28, len: 686
+    PT_NOTE[2] -> PT_LOAD RX: off=0x4A8000 va=0x4A0000 sz=0x20D8
+    [+] test_arith VMP protected
+
+[+] Output: demo\vmp_demo_A
+
+[+] VMP ??????!

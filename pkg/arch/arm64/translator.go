@@ -413,6 +413,8 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 
 	case LDR_IMM, LDRB_IMM, LDRH_IMM, LDRSB_IMM, LDRSH_IMM, LDRSW_IMM:
 		return 0, t.trLoad(inst)
+	case LDR_LIT:
+		return 0, t.trLdrLiteral(inst)
 	case STR_IMM, STRB_IMM, STRH_IMM:
 		return 0, t.trStore(inst)
 
@@ -454,6 +456,14 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 		return 0, t.trMADD(inst, false)
 	case MSUB:
 		return 0, t.trMADD(inst, true)
+	case SMADDL:
+		return 0, t.trSMADDL(inst, false)
+	case SMSUBL:
+		return 0, t.trSMADDL(inst, true)
+	case UMADDL:
+		return 0, t.trUMADDL(inst, false)
+	case UMSUBL:
+		return 0, t.trUMADDL(inst, true)
 	case UMULH:
 		return 0, t.trUmulh(inst)
 

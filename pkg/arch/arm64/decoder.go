@@ -96,6 +96,10 @@ const (
 	MADD
 	MSUB
 	UMULH
+	SMADDL
+	SMSUBL
+	UMADDL
+	UMSUBL
 	EXTR
 	LD1_16B
 	ST1_16B
@@ -238,15 +242,18 @@ func OpName(op Op) string {
 		ADDS_REG: "ADDS(reg)", SUBS_REG: "SUBS(reg)",
 		AND_REG: "AND(reg)", ORR_REG: "ORR(reg)", EOR_REG: "EOR(reg)",
 		EON: "EON", ANDS_REG: "ANDS(reg)",
-		LSL_REG:  "LSL(reg)", LSR_REG: "LSR(reg)",
+		LSL_REG: "LSL(reg)", LSR_REG: "LSR(reg)",
 		ASR_REG: "ASR(reg)", ROR_REG: "ROR(reg)",
 		MUL: "MUL", MADD: "MADD", MSUB: "MSUB", UMULH: "UMULH",
+		SMADDL: "SMADDL", SMSUBL: "SMSUBL",
+		UMADDL: "UMADDL", UMSUBL: "UMSUBL",
 		SDIV: "SDIV", UDIV: "UDIV", MVN: "MVN",
 		LDR_IMM: "LDR(imm)", LDRB_IMM: "LDRB(imm)", LDRH_IMM: "LDRH(imm)",
 		LDRSB_IMM: "LDRSB(imm)", LDRSH_IMM: "LDRSH(imm)", LDRSW_IMM: "LDRSW(imm)",
 		STR_IMM: "STR(imm)", STRB_IMM: "STRB(imm)", STRH_IMM: "STRH(imm)",
 		LDR_REG: "LDR(reg)", LDRB_REG: "LDRB(reg)", STRB_REG: "STRB(reg)", STR_REG: "STR(reg)",
-		LDP: "LDP", STP: "STP",
+		LDR_LIT: "LDR(lit)",
+		LDP:     "LDP", STP: "STP",
 		B: "B", BL: "BL", BR: "BR", BLR: "BLR", RET: "RET",
 		B_COND: "B.cond", CBZ: "CBZ", CBNZ: "CBNZ",
 		TBZ: "TBZ", TBNZ: "TBNZ",
@@ -255,7 +262,7 @@ func OpName(op Op) string {
 		EXTR:    "EXTR",
 		LD1_16B: "LD1{16B}", ST1_16B: "ST1{16B}",
 		ANDS_IMM: "ANDS(imm)",
-		ADD_EXT: "ADD(ext)", SUB_EXT: "SUB(ext)",
+		ADD_EXT:  "ADD(ext)", SUB_EXT: "SUB(ext)",
 		ADDS_EXT: "ADDS(ext)", SUBS_EXT: "SUBS(ext)",
 		CCMP_REG: "CCMP(reg)", CCMP_IMM: "CCMP(imm)",
 		CCMN_REG: "CCMN(reg)", CCMN_IMM: "CCMN(imm)",

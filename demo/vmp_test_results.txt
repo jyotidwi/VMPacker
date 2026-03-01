@@ -1,0 +1,101 @@
+﻿============================================================
+VMP Phase-by-Phase Test
+============================================================
+
+[stub_phase_A] VMP protecting 0x100013C0-0x100014C0 ... VMP FAIL (rc=1)
+
+[!] 澶辫触: .text section not found
+exit status 1
+
+
+[stub_phase_B] VMP protecting 0x100014C0-0x10001528 ... VMP FAIL (rc=1)
+
+[!] 澶辫触: .text section not found
+exit status 1
+
+
+[stub_phase_C] VMP protecting 0x10001528-0x100015D0 ... VMP FAIL (rc=1)
+
+[!] 澶辫触: .text section not found
+exit status 1
+
+
+[stub_phase_D] VMP protecting 0x100015D0-0x10001660 ... VMP FAIL (rc=1)
+
+[!] 澶辫触: .text section not found
+exit status 1
+
+
+[stub_phase_E] VMP protecting 0x10001660-0x10001700 ... VMP FAIL (rc=1)
+
+[!] 澶辫触: .text section not found
+exit status 1
+
+
+[stub_phase_F] VMP protecting 0x10001700-0x10001988 ... VMP FAIL (rc=1)
+
+[!] 澶辫触: .text section not found
+exit status 1
+
+
+[stub_phase_G] VMP protecting 0x10001988-0x10001AA8 ... VMP FAIL (rc=1)
+
+[!] 澶辫触: .text section not found
+exit status 1
+
+
+[stub_phase_H] VMP protecting 0x10001AA8-0x10001B58 ... VMP FAIL (rc=1)
+
+[!] 澶辫触: .text section not found
+exit status 1
+
+
+[stub_phase_I] VMP protecting 0x10001B58-0x10001CB8 ... VMP FAIL (rc=1)
+
+[!] 澶辫触: .text section not found
+exit status 1
+
+
+[stub_main] VMP protecting 0x10001CB8-0x10001D18 ... VMP FAIL (rc=1)
+
+[!] 澶辫触: .text section not found
+exit status 1
+
+
+============================================================
+RESULTS SUMMARY
+============================================================
+python : Traceback (mo
+st recent call last):
+所在位置 行:1 字符: 1
++ python demo\vmp_phas
+e_test.py 2>&1 | Out-F
+ile demo\vmp_test_resu
+lts.t ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (Traceback    
+ (most recent call    
+ last)::String) [    ]
+, RemoteExceptio    n
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+  File "C:\Users\Rabe\
+Desktop\vmp\demo\vmp_p
+hase_test.py", line 75
+, in <module>
+    print(f"  {marker}
+ {name:20s} : {status}
+")
+    ~~~~~^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
+^^
+UnicodeEncodeError: 'g
+bk' codec can't encode
+ character '\u274c' in
+ position 2: illegal m
+ultibyte sequence

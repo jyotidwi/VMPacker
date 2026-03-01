@@ -1,0 +1,115 @@
+﻿C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe -C stub
+make[1]: Entering directory 'C:/Users/Rabe/Desktop/vmp/go-packer/stub'
+aarch64-linux-gnu-gcc -nostdlib -nostartfiles -ffreestanding -fno-exceptions -fno-asynchronous-unwind-tables -O2 -I src -c -o build/stub_main.o src/stub_main.c
+make : In file include
+d from c:\gcc-linaro-7
+.2.1-2017.11-i686-ming
+w32_aarch64-linux-gnu\
+lib\gcc\aarch64-linux-
+gnu\7.2.1\include\stdi
+nt.h:11:0,
+所在位置 行:1 字符: 15
++ cd go-packer; make s
+tub 2>&1 | Out-File ..
+\demo\gopacker_build.t
+xt -E ...
++               ~~~~~~
+~~~~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (In file in   
+ clude...\stdint.h    
+:11:0,:String) []    ,
+ RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+                 from 
+src/stub_phases.h:12,
+                 from 
+src/stub_main.c:520:
+c:\gcc-linaro-7.2.1-20
+17.11-i686-mingw32_aar
+ch64-linux-gnu\lib\gcc
+\aarch64-linux-gnu\7.2
+.1\include\stdint-gcc.
+h:43:24: error: confli
+cting types for 'int64
+_t'
+ typedef __INT64_TYPE_
+_ int64_t;
+                      
+  ^~~~~~~
+src/stub_main.c:19:19:
+ note: previous declar
+ation of 'int64_t' was
+ here
+ typedef long long int
+64_t;
+                   ^~~
+~~~~
+In file included from 
+c:\gcc-linaro-7.2.1-20
+17.11-i686-mingw32_aar
+ch64-linux-gnu\lib\gcc
+\aarch64-linux-gnu\7.2
+.1\include\stdint.h:11
+:0,
+                 from 
+src/stub_phases.h:12,
+                 from 
+src/stub_main.c:520:
+c:\gcc-linaro-7.2.1-20
+17.11-i686-mingw32_aar
+ch64-linux-gnu\lib\gcc
+\aarch64-linux-gnu\7.2
+.1\include\stdint-gcc.
+h:55:25: error: confli
+cting types for 'uint6
+4_t'
+ typedef __UINT64_TYPE
+__ uint64_t;
+                      
+   ^~~~~~~~
+In file included from 
+src/stub_main.c:11:0:
+src/integrity.h:7:28: 
+note: previous declara
+tion of 'uint64_t' was
+ here
+ typedef unsigned long
+ long uint64_t;
+                      
+      ^~~~~~~~
+src/stub_main.c: In fu
+nction 'stub_phase_I':
+src/stub_main.c:773:14
+: warning: passing arg
+ument 1 of 'patch_auxv
+' from incompatible po
+inter type [-Wincompat
+ible-pointer-types]
+   patch_auxv(ctx->ori
+g_sp, ctx->actual_base
+, ctx->orig_entry, ctx
+->e_phoff,
+              ^~~
+src/stub_main.c:320:13
+: note: expected 'uint
+64_t * {aka long long 
+unsigned int *}' but a
+rgument is of type 'ui
+nt64_t * {aka long uns
+igned int *}'
+ static void patch_aux
+v(uint64_t *orig_sp, u
+int64_t load_base,
+             ^~~~~~~~~
+~
+make[1]: *** [Makefile
+:38: build/stub_main.o
+] Error 1
+make[1]: Leaving directory 'C:/Users/Rabe/Desktop/vmp/go-packer/stub'
+make: *** [Makefile:9:
+ stub] Error 2

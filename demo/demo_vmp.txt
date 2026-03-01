@@ -1,0 +1,3 @@
+result = 0xfffff61b1ca3a4e8
+result2 = 0xfffffde1efd37a3c
+result3 = 0xffffd1a7f8ffdcd8
