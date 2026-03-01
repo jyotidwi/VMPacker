@@ -98,6 +98,14 @@ static inline u32 h_ror(vm_ctx_t *vm) {
   return 4;
 }
 
+/* UMULH Xd, Xn, Xm (无符号高 64 位乘法) */
+static inline u32 h_umulh(vm_ctx_t *vm) {
+  u8 d = vm->bc[vm->pc + 1], a = vm->bc[vm->pc + 2], b = vm->bc[vm->pc + 3];
+  __uint128_t r = (__uint128_t)vm->R[a & 31] * (__uint128_t)vm->R[b & 31];
+  vm->R[d & 31] = (u64)(r >> 64);
+  return 4;
+}
+
 /* ========== 寄存器 + 立即数 ALU (7B) ========== */
 
 /* ADD Xd, Xn, #imm32 */

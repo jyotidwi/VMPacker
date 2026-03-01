@@ -37,8 +37,9 @@ const (
 	OpAnd byte = 0x4D
 	OpOr  byte = 0x72
 	OpShl byte = 0xAE
-	OpShr byte = 0xF1 // 逻辑右移
-	OpAsr byte = 0xDA // 算术右移
+	OpShr   byte = 0xF1 // 逻辑右移
+	OpAsr   byte = 0xDA // 算术右移
+	OpUmulh byte = 0xF2 // UMULH Xd,Xn,Xm  4B: [op][d][n][m]
 	OpNot byte = 0x08 // NOT Rx, Ry — 3B
 	OpRor byte = 0x3D // 循环右移
 
@@ -85,6 +86,19 @@ const (
 	// SIMD 加载/存储: [op][rn][len] = 3B
 	OpVld16 byte = 0xC1 // vtmp ← mem[R[rn]], len bytes
 	OpVst16 byte = 0xC2 // mem[R[rn]] ← vtmp, len bytes
+
+	// TBZ/TBNZ: [op][reg][bit][target32] = 7B
+	OpTbz  byte = 0x16 // TBZ  Xt, #bit, target
+	OpTbnz byte = 0x17 // TBNZ Xt, #bit, target
+
+	// CCMP/CCMN: [op][cond][nzcv][rn][rm_or_imm5][sf] = 6B
+	OpCcmpReg byte = 0x18 // CCMP Xn, Xm, #nzcv, cond
+	OpCcmpImm byte = 0x1A // CCMP Xn, #imm5, #nzcv, cond
+	OpCcmnReg byte = 0x1C // CCMN Xn, Xm, #nzcv, cond
+	OpCcmnImm byte = 0x1D // CCMN Xn, #imm5, #nzcv, cond
+
+	// SVC: [op][imm16_lo][imm16_hi] = 3B
+	OpSvc byte = 0x1E // SVC #imm16
 )
 
 // 标志位

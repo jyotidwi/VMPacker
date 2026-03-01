@@ -21,8 +21,9 @@ type Instruction struct {
 	Rn     int // 第一源寄存器
 	Rm     int // 第二源寄存器
 	Imm    int64
-	Shift  int
-	Cond   int
+	Shift     int
+	ShiftType int // 0=LSL, 1=LSR, 2=ASR, 3=ROR
+	Cond      int
 	SF     bool // 64-bit (true) vs 32-bit (false)
 	Offset int  // 指令在函数内的偏移
 	WB     int  // Writeback 模式 (0=无, 1=post, 3=pre)

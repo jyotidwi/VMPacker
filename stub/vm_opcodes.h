@@ -41,6 +41,7 @@
 #define OP_SHL 0xAE /* LSL  Xd, Xn, Xm              4B */
 #define OP_SHR 0xF1 /* LSR  Xd, Xn, Xm              4B */
 #define OP_ASR 0xDA /* ASR  Xd, Xn, Xm              4B */
+#define OP_UMULH 0xF2 /* UMULH Xd, Xn, Xm            4B */
 #define OP_NOT 0x08 /* MVN  Xd, Xn                   3B: [op][d][n] */
 #define OP_ROR 0x3D /* ROR  Xd, Xn, Xm              4B */
 
@@ -86,5 +87,18 @@
 /* ---- SIMD ---- */
 #define OP_VLD16 0xC1 /* LD1 {Vn.16B}, [Xn]            3B: [op][rn][len] */
 #define OP_VST16 0xC2 /* ST1 {Vn.16B}, [Xn]            3B: [op][rn][len] */
+
+/* ---- TBZ/TBNZ ---- */
+#define OP_TBZ  0x16 /* TBZ  Xt, #bit, target          7B: [op][reg][bit][target32] */
+#define OP_TBNZ 0x17 /* TBNZ Xt, #bit, target          7B: [op][reg][bit][target32] */
+
+/* ---- CCMP/CCMN ---- */
+#define OP_CCMP_REG 0x18 /* CCMP Xn, Xm, #nzcv, cond   6B: [op][cond][nzcv][rn][rm][sf] */
+#define OP_CCMP_IMM 0x1A /* CCMP Xn, #imm5, #nzcv, cond 6B: [op][cond][nzcv][rn][imm5][sf] */
+#define OP_CCMN_REG 0x1C /* CCMN Xn, Xm, #nzcv, cond   6B: [op][cond][nzcv][rn][rm][sf] */
+#define OP_CCMN_IMM 0x1D /* CCMN Xn, #imm5, #nzcv, cond 6B: [op][cond][nzcv][rn][imm5][sf] */
+
+/* ---- SVC ---- */
+#define OP_SVC 0x1E /* SVC #imm16                      3B: [op][imm16_le] */
 
 #endif /* VM_OPCODES_H */

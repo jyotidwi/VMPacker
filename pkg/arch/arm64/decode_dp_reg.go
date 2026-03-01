@@ -36,6 +36,12 @@ var dpRegPatterns = []InstrPattern{
 		Post:   postShiftedXZR3,
 	},
 	{
+		// EON = EOR(reg) with N=1 → Rd = Rn XOR NOT(shift(Rm))
+		Name: "EON", Mask: 0x7F200000, Value: 0x4A200000, Op: EON,
+		Fields: []FieldDef{fSF, {Name: "shtype", Hi: 23, Lo: 22}, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
+		Post:   postShiftedXZR3,
+	},
+	{
 		Name: "ANDS_REG", Mask: 0x7F200000, Value: 0x6A000000, Op: ANDS_REG,
 		Fields: []FieldDef{fSF, {Name: "shtype", Hi: 23, Lo: 22}, fRm16, {Name: "shift", Hi: 15, Lo: 10}, fRn, fRd},
 		Post:   postShiftedXZR3,
@@ -149,6 +155,70 @@ var dpRegPatterns = []InstrPattern{
 			xzrReplace(&inst.Rm)
 		},
 	},
+
+	// ---- Data processing (3-source): UMULH ----
+	// 编码: 1:00:11011:110:Rm:0:11111:Rn:Rd
+	// sf=1 (64-bit only), op54=00, op31=110, o0=0, Ra=11111
+	{
+		Name: "UMULH", Mask: 0xFFE0FC00, Value: 0x9BC07C00, Op: UMULH,
+		Fields: []FieldDef{fRm16, fRn, fRd},
+		Post: func(f map[string]int64, inst *vm.Instruction) {
+			inst.SF = true // UMULH is always 64-bit
+			xzrReplace(&inst.Rd)
+			xzrReplace(&inst.Rn)
+			xzrReplace(&inst.Rm)
+		},
+	},
+
+	// ---- Add/Subtract (extended register) ----
+	// 编码: sf:op:S:01011:00:1:Rm:option:imm3:Rn:Rd
+	// bits[28:24]=01011, bits[23:22]=00, bit21=1
+	{
+		Name: "ADD_EXT", Mask: 0x7FE00000, Value: 0x0B200000, Op: ADD_EXT,
+		Fields: []FieldDef{fSF, fRm16, {Name: "option", Hi: 15, Lo: 13}, {Name: "imm3", Hi: 12, Lo: 10}, fRn, fRd},
+		Post:   postExtReg,
+	},
+	{
+		Name: "ADDS_EXT", Mask: 0x7FE00000, Value: 0x2B200000, Op: ADDS_EXT,
+		Fields: []FieldDef{fSF, fRm16, {Name: "option", Hi: 15, Lo: 13}, {Name: "imm3", Hi: 12, Lo: 10}, fRn, fRd},
+		Post:   postExtReg,
+	},
+	{
+		Name: "SUB_EXT", Mask: 0x7FE00000, Value: 0x4B200000, Op: SUB_EXT,
+		Fields: []FieldDef{fSF, fRm16, {Name: "option", Hi: 15, Lo: 13}, {Name: "imm3", Hi: 12, Lo: 10}, fRn, fRd},
+		Post:   postExtReg,
+	},
+	{
+		Name: "SUBS_EXT", Mask: 0x7FE00000, Value: 0x6B200000, Op: SUBS_EXT,
+		Fields: []FieldDef{fSF, fRm16, {Name: "option", Hi: 15, Lo: 13}, {Name: "imm3", Hi: 12, Lo: 10}, fRn, fRd},
+		Post:   postExtReg,
+	},
+
+	// ---- Conditional compare (CCMP/CCMN) ----
+	// CCMP register: sf:1:1:11010010:Rm:cond:0:0:Rn:0:nzcv
+	{
+		Name: "CCMP_REG", Mask: 0x7FE00C10, Value: 0x7A400000, Op: CCMP_REG,
+		Fields: []FieldDef{fSF, fRm16, {Name: "cond", Hi: 15, Lo: 12}, fRn, {Name: "nzcv", Hi: 3, Lo: 0}},
+		Post:   postCCMP,
+	},
+	// CCMP immediate: sf:1:1:11010010:imm5:cond:1:0:Rn:0:nzcv
+	{
+		Name: "CCMP_IMM", Mask: 0x7FE00C10, Value: 0x7A400800, Op: CCMP_IMM,
+		Fields: []FieldDef{fSF, {Name: "imm5", Hi: 20, Lo: 16}, {Name: "cond", Hi: 15, Lo: 12}, fRn, {Name: "nzcv", Hi: 3, Lo: 0}},
+		Post:   postCCMPImm,
+	},
+	// CCMN register: sf:0:1:11010010:Rm:cond:0:0:Rn:0:nzcv
+	{
+		Name: "CCMN_REG", Mask: 0x7FE00C10, Value: 0x3A400000, Op: CCMN_REG,
+		Fields: []FieldDef{fSF, fRm16, {Name: "cond", Hi: 15, Lo: 12}, fRn, {Name: "nzcv", Hi: 3, Lo: 0}},
+		Post:   postCCMP,
+	},
+	// CCMN immediate: sf:0:1:11010010:imm5:cond:1:0:Rn:0:nzcv
+	{
+		Name: "CCMN_IMM", Mask: 0x7FE00C10, Value: 0x3A400800, Op: CCMN_IMM,
+		Fields: []FieldDef{fSF, {Name: "imm5", Hi: 20, Lo: 16}, {Name: "cond", Hi: 15, Lo: 12}, fRn, {Name: "nzcv", Hi: 3, Lo: 0}},
+		Post:   postCCMPImm,
+	},
 }
 
 // postXZR3 逻辑/算术/条件选择(reg): Rd/Rn/Rm=31 → XZR
@@ -158,13 +228,45 @@ func postXZR3(f map[string]int64, inst *vm.Instruction) {
 	xzrReplace(&inst.Rm)
 }
 
-// postShiftedXZR3 shifted register: XZR 替换 + shift type 安全检查
-// 当 shift amount != 0 且 shift type 不是 LSL(00) 时，标记 UNSUPPORTED
+// postShiftedXZR3 shifted register: XZR 替换 + shift type 保存
 func postShiftedXZR3(f map[string]int64, inst *vm.Instruction) {
 	xzrReplace(&inst.Rd)
 	xzrReplace(&inst.Rn)
 	xzrReplace(&inst.Rm)
-	if shtype, ok := f["shtype"]; ok && shtype != 0 && inst.Shift != 0 {
-		inst.Op = int(UNSUPPORTED)
+	if shtype, ok := f["shtype"]; ok {
+		inst.ShiftType = int(shtype) // 0=LSL, 1=LSR, 2=ASR, 3=ROR
+	}
+}
+
+// postExtReg extended register: option→ShiftType, imm3→Shift, Rn=31→SP(保留), Rd/Rm→XZR
+func postExtReg(f map[string]int64, inst *vm.Instruction) {
+	xzrReplace(&inst.Rd)
+	xzrReplace(&inst.Rm)
+	// Rn=31 在 extended register 中是 SP, 不做 XZR 替换
+	if option, ok := f["option"]; ok {
+		inst.ShiftType = int(option) // 0=UXTB..7=SXTX
+	}
+	if imm3, ok := f["imm3"]; ok {
+		inst.Shift = int(imm3) // 额外左移量 0-4
+	}
+}
+
+// postCCMP conditional compare (register): nzcv→WB, cond→Cond, Rn/Rm→XZR
+func postCCMP(f map[string]int64, inst *vm.Instruction) {
+	xzrReplace(&inst.Rn)
+	xzrReplace(&inst.Rm)
+	if nzcv, ok := f["nzcv"]; ok {
+		inst.WB = int(nzcv)
+	}
+}
+
+// postCCMPImm conditional compare (immediate): nzcv→WB, cond→Cond, imm5→Rm, Rn→XZR
+func postCCMPImm(f map[string]int64, inst *vm.Instruction) {
+	xzrReplace(&inst.Rn)
+	if nzcv, ok := f["nzcv"]; ok {
+		inst.WB = int(nzcv)
+	}
+	if imm5, ok := f["imm5"]; ok {
+		inst.Rm = int(imm5) // 复用 Rm 字段存储 imm5
 	}
 }

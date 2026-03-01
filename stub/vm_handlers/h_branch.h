@@ -120,4 +120,32 @@ static inline u32 h_ja(vm_ctx_t *vm) {
   return 0;
 }
 
+/* TBZ Xt, #bit, target  [7B: op | reg | bit | target32]
+ * 测试寄存器指定位是否为零，为零则跳转 */
+static inline u32 h_tbz(vm_ctx_t *vm) {
+  u8 reg = vm->bc[vm->pc + 1];
+  u8 bit = vm->bc[vm->pc + 2];
+  u32 t = rd32(&vm->bc[vm->pc + 3]);
+  if (!(vm->R[reg & 31] & ((u64)1 << (bit & 63))) && BRANCH_TARGET_VALID(vm, t)) {
+    vm->pc = t;
+  } else {
+    if (!(vm)->reverse) (vm)->pc += 7;
+  }
+  return 0;
+}
+
+/* TBNZ Xt, #bit, target  [7B: op | reg | bit | target32]
+ * 测试寄存器指定位是否非零，非零则跳转 */
+static inline u32 h_tbnz(vm_ctx_t *vm) {
+  u8 reg = vm->bc[vm->pc + 1];
+  u8 bit = vm->bc[vm->pc + 2];
+  u32 t = rd32(&vm->bc[vm->pc + 3]);
+  if ((vm->R[reg & 31] & ((u64)1 << (bit & 63))) && BRANCH_TARGET_VALID(vm, t)) {
+    vm->pc = t;
+  } else {
+    if (!(vm)->reverse) (vm)->pc += 7;
+  }
+  return 0;
+}
+
 #endif /* H_BRANCH_H */

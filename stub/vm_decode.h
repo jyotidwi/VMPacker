@@ -27,19 +27,23 @@ static inline u8 vm_insn_size(u8 op) {
   case OP_RET: case OP_PUSH: case OP_POP:
   case OP_CALL_REG: case OP_BR_REG:                   return 2;
   case OP_MOV_REG: case OP_NOT: case OP_CMP:
-  case OP_VLD16: case OP_VST16:                        return 3;
+  case OP_VLD16: case OP_VST16:
+  case OP_SVC:                                         return 3;
   case OP_ADD: case OP_SUB: case OP_MUL: case OP_XOR:
   case OP_AND: case OP_OR:  case OP_SHL: case OP_SHR:
-  case OP_ASR: case OP_ROR:                            return 4;
+  case OP_ASR: case OP_ROR: case OP_UMULH:             return 4;
   case OP_LOAD8: case OP_LOAD16: case OP_LOAD32: case OP_LOAD64:
   case OP_STORE8: case OP_STORE16: case OP_STORE32: case OP_STORE64:
   case OP_JMP: case OP_JE: case OP_JNE: case OP_JL:
   case OP_JGE: case OP_JGT: case OP_JLE: case OP_JB:
   case OP_JAE: case OP_JBE: case OP_JA:               return 5;
-  case OP_MOV_IMM32: case OP_CMP_IMM:                 return 6;
+  case OP_MOV_IMM32: case OP_CMP_IMM:
+  case OP_CCMP_REG: case OP_CCMP_IMM:
+  case OP_CCMN_REG: case OP_CCMN_IMM:                 return 6;
   case OP_ADD_IMM: case OP_SUB_IMM: case OP_XOR_IMM:
   case OP_AND_IMM: case OP_OR_IMM:  case OP_MUL_IMM:
-  case OP_SHL_IMM: case OP_SHR_IMM: case OP_ASR_IMM:  return 7;
+  case OP_SHL_IMM: case OP_SHR_IMM: case OP_ASR_IMM:
+  case OP_TBZ: case OP_TBNZ:                          return 7;
   case OP_CALL_NAT:                                    return 9;
   case OP_MOV_IMM:                                     return 10;
   default:                                             return 0;

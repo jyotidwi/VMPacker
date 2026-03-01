@@ -1,6 +1,8 @@
 package arm64
 
 import (
+	
+
 	"github.com/vmpacker/pkg/vm"
 )
 
@@ -44,4 +46,13 @@ func (t *Translator) trADR(inst vm.Instruction) (int, error) {
 	t.emit(vm.OpMovImm, rd)
 	t.emitU64(addr)
 	return 0, nil
+}
+
+// trSVC 翻译 SVC #imm16
+// 字节码: [OpSvc][imm16_lo][imm16_hi] = 3B
+// handler 使用 inline asm 执行 svc #0，从 VM 寄存器传递 syscall 参数
+func (t *Translator) trSVC(inst vm.Instruction) error {
+	imm16 := uint16(inst.Imm)
+	t.emit(vm.OpSvc, byte(imm16), byte(imm16>>8))
+	return nil
 }

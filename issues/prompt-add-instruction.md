@@ -1,14 +1,4 @@
-# 🛠️ VMP 指令添加提示词模板
 
-> **用法**：将 `{INSTRUCTION}` 替换为目标 ARM64 指令名（如 `CLZ`、`REV`、`SMULL`），整段发给 AI。
->
-> **核心原则**：宁可错杀，不可放过 — 每条 ARM64 指令的所有编码变体都必须覆盖。
-
----
-
-## 📋 提示词正文
-
-````
 我需要你为这个 ARM64 VMP（虚拟机保护）项目添加对 {INSTRUCTION} 指令的完整支持。
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -56,20 +46,20 @@ ARM64 每条指令都有多种编码变体。例如 LDR 有 6 种：
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ```
- Phase 1                Phase 2                Phase 3
-┌──────────┐          ┌──────────┐          ┌──────────┐
-│ Demo 验证 │ ──PASS─▶ │ 壳代码修改 │ ──PASS─▶ │ VMP 测试  │
-│          │          │          │          │          │
-│ ① 写 demo│          │ ④ Go 翻译 │          │ ⑦ make   │
-│ ② 编译   │          │ ⑤ C handler│         │ ⑧ VMP 打包│
-│ ③ 原生运行│          │ ⑥ 注册分发 │          │ ⑨ adb 测试│
-└──────────┘          └──────────┘          └──────────┘
-     │                      │                      │
-     ▼                      ▼                      ▼
-  FAIL→修复              FAIL→修复              FAIL→修复
+ Phase 1                Phase 2                Phase 3                Phase 4
+┌──────────┐          ┌──────────┐          ┌──────────┐          ┌──────────┐
+│ Demo 验证 │ ──PASS─▶ │ 壳代码修改 │ ──PASS─▶ │ VMP 测试  │ ──PASS─▶ │ 收尾交付  │
+│          │          │          │          │          │          │          │
+│ ① 写 demo│          │ ④ Go 翻译 │          │ ⑦ make   │          │ ⑩ 总结文档│
+│ ② 编译   │          │ ⑤ C handler│         │ ⑧ VMP 打包│          │ ⑪ 测试脚本│
+│ ③ 原生运行│          │ ⑥ 注册分发 │          │ ⑨ adb 测试│          │ ⑫ 更新任务│
+└──────────┘          └──────────┘          └──────────┘          └──────────┘
+     │                      │                      │                      │
+     ▼                      ▼                      ▼                      ▼
+  FAIL→修复              FAIL→修复              FAIL→修复              完成 ✅
 ```
 
-> **铁律**：每个 Phase 必须 PASS 才能进入下一个。失败则修复后重新验证。
+> **铁律**：每个 Phase 必须 PASS 才能进入下一个。失败则修复后重新验证。完成 Phase 3 后必须执行 Phase 4 收尾。
 
 ---
 
@@ -248,6 +238,75 @@ adb shell "chmod +x /home/root/vmp/demo_insn_{INSTRUCTION}_token.vmp; /home/root
 
 **预期输出**：`{INSTRUCTION} PASS`（两种模式都必须通过）
 
+---
+
+### Phase 4：收尾交付（文档 + 脚本 + 提交）
+
+> 每条指令完成 Phase 1-3 后，必须执行以下收尾工作。
+
+**⑩ 生成总结文档** → `issues/{INSTRUCTION}_summary.md`
+
+```markdown
+# {INSTRUCTION} 指令支持 — 实现总结
+
+## 概述
+- 指令：{INSTRUCTION}
+- 编码变体：[列出所有已实现的变体]
+- 新增 VM opcode：[如有] / 纯组合实现
+
+## 修改文件清单
+| 文件 | 改动说明 |
+|------|---------|
+| ... | ... |
+
+## 测试结果
+- 原生运行：✅ PASS
+- VMP Standard：✅ PASS
+- VMP Token：✅ PASS
+
+## 备注
+[特殊处理、已知限制等]
+```
+
+**⑪ 生成测试脚本** → `test_vmp_insn_{INSTRUCTION}.sh`
+
+```bash
+#!/bin/bash
+set -e
+INSN="{INSTRUCTION}"
+
+echo "=== ${INSN} 测试 ==="
+
+# 交叉编译
+aarch64-linux-gnu-gcc -O1 -static -o build/demo_insn_${INSN} demo/demo_insn_${INSN}.c
+echo "[1/5] 编译完成"
+
+# 原生测试
+adb push build/demo_insn_${INSN} /home/root/vmp/
+adb shell "chmod +x /home/root/vmp/demo_insn_${INSN}; /home/root/vmp/demo_insn_${INSN}"
+echo "[2/5] 原生测试通过"
+
+# VMP 打包
+./build/vmpacker -func test_${INSN} -debug -v -o build/demo_insn_${INSN}_std.vmp build/demo_insn_${INSN}
+./build/vmpacker -token -func test_${INSN} -debug -v -o build/demo_insn_${INSN}_token.vmp build/demo_insn_${INSN}
+echo "[3/5] VMP 打包完成"
+
+# VMP Standard 测试
+adb push build/demo_insn_${INSN}_std.vmp /home/root/vmp/
+adb shell "chmod +x /home/root/vmp/demo_insn_${INSN}_std.vmp; /home/root/vmp/demo_insn_${INSN}_std.vmp"
+echo "[4/5] VMP Standard 测试通过"
+
+# VMP Token 测试
+adb push build/demo_insn_${INSN}_token.vmp /home/root/vmp/
+adb shell "chmod +x /home/root/vmp/demo_insn_${INSN}_token.vmp; /home/root/vmp/demo_insn_${INSN}_token.vmp"
+echo "[5/5] VMP Token 测试通过"
+
+echo "=== ${INSN} 全部通过 ✅ ==="
+```
+
+**⑫ 更新任务表** → `issues/unsupported-instructions.md`
+- 将该指令标记为 `[x]` 完成，附上 `✅ PASS`
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## ✅ 验证清单
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -321,6 +380,12 @@ adb shell "chmod +x /home/root/vmp/demo_insn_ldrh_std.vmp; /home/root/vmp/demo_i
 # → LDRH PASS ✅
 ```
 
+### Phase 4: 收尾交付
+
+- ✅ 生成 `issues/ldrh_summary.md` — 记录 3 个编码变体 + OpLoad16 新增
+- ✅ 生成 `test_vmp_insn_ldrh.sh` — 自动化测试脚本
+- ✅ 更新 `issues/unsupported-instructions.md` — 标记 `[x] T7: LDRH ✅ PASS`
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 🔄 批量添加
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -331,8 +396,39 @@ adb shell "chmod +x /home/root/vmp/demo_insn_ldrh_std.vmp; /home/root/vmp/demo_i
 2. REV（字节序反转）
 3. SMULL（有符号 32×32→64 乘法）
 
-每条指令严格走完 Phase 1→2→3，全部 PASS 后才进入下一条。
+每条指令严格走完 Phase 1→2→3→4，全部 PASS 后才进入下一条。
 ```
+
+### ⚠️ 批量执行铁律
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  指令 1: Phase 1 → Phase 2 → Phase 3 → Phase 4         │
+│     ↓ 全部 PASS ✅                                      │
+│  指令 2: Phase 1 → Phase 2 → Phase 3 → Phase 4         │
+│     ↓ 全部 PASS ✅                                      │
+│  指令 3: Phase 1 → Phase 2 → Phase 3 → Phase 4         │
+│     ↓ 全部 PASS ✅                                      │
+│  完成 🎉                                                │
+└─────────────────────────────────────────────────────────┘
+```
+
+- 🚫 **禁止并行**：不可同时处理多条指令
+- 🚫 **禁止跳步**：Phase N 未 PASS 不可进入 Phase N+1
+- 🚫 **禁止跳指令**：指令 N 未完成不可开始指令 N+1
+- ✅ **每步验证**：每个 Phase 完成后必须在设备上验证
+- ✅ **失败即停**：任何 Phase FAIL 立即停下修复
+
+### 📌 四项必做提醒
+
+每条指令完成后，确认以下四项全部执行：
+
+| # | 必做项 | 产出物 | 说明 |
+|---|--------|--------|------|
+| ✔️ | 生成总结文档 | `issues/{INSN}_summary.md` | 记录实现细节和测试结果 |
+| ✔️ | 生成测试脚本 | `test_vmp_insn_{INSN}.sh` | 可重复执行的自动化测试 |
+| ✔️ | 编译验证 | `make all` 无错误 | stub + packer 编译通过 |
+| ✔️ | 设备运行验证 | adb 推送 + 运行 PASS | 原生 + VMP(std) + VMP(token) |
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## 📊 ARM64 编码变体速查表
@@ -385,8 +481,9 @@ adb shell "chmod +x /home/root/vmp/demo_insn_xxx_token.vmp; /home/root/vmp/demo_
 
 ## 现在请添加 {INSTRUCTION}
 
-先列出所有 ARM64 编码变体，然后严格按 Phase 1 → 2 → 3 执行。
+先列出所有 ARM64 编码变体，然后严格按 Phase 1 → 2 → 3 → 4 执行。
 每个 Phase 必须 PASS 才能进入下一个。
+完成后确认四项必做：✔️总结文档 ✔️测试脚本 ✔️编译通过 ✔️设备运行通过
 ````
 
 ---
@@ -396,4 +493,5 @@ adb shell "chmod +x /home/root/vmp/demo_insn_xxx_token.vmp; /home/root/vmp/demo_
 1. 复制 ```````` 之间的提示词正文
 2. 全局替换 `{INSTRUCTION}` 为目标指令名
 3. 发给 AI（确保 AI 能访问项目源码）
-4. AI 会按 Phase 1→2→3 逐步执行，每步验证通过才继续
+4. AI 会按 Phase 1→2→3→4 逐步执行，每步验证通过才继续
+5. Phase 4 会自动生成总结文档 + 测试脚本 + 更新任务表

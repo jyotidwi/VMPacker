@@ -111,6 +111,8 @@ __attribute__((noinline)) VM_SECTION_ALU
 static u32 hw_not(vm_ctx_t *vm) { return h_not(vm); }
 __attribute__((noinline)) VM_SECTION_ALU
 static u32 hw_ror(vm_ctx_t *vm) { return h_ror(vm); }
+__attribute__((noinline)) VM_SECTION_ALU
+static u32 hw_umulh(vm_ctx_t *vm) { return h_umulh(vm); }
 
 /* ---- ALU 立即数 ---- */
 __attribute__((noinline)) VM_SECTION_ALU
@@ -182,6 +184,26 @@ static u32 hw_vld16(vm_ctx_t *vm) { return h_vld16(vm); }
 __attribute__((noinline)) VM_SECTION_MEM
 static u32 hw_vst16(vm_ctx_t *vm) { return h_vst16(vm); }
 
+/* ---- TBZ/TBNZ (分支, 返回 0) ---- */
+__attribute__((noinline)) VM_SECTION_BRANCH
+static u32 hw_tbz(vm_ctx_t *vm) { h_tbz(vm); return 0; }
+__attribute__((noinline)) VM_SECTION_BRANCH
+static u32 hw_tbnz(vm_ctx_t *vm) { h_tbnz(vm); return 0; }
+
+/* ---- CCMP/CCMN ---- */
+__attribute__((noinline)) VM_SECTION_ALU
+static u32 hw_ccmp_reg(vm_ctx_t *vm) { return h_ccmp_reg(vm); }
+__attribute__((noinline)) VM_SECTION_ALU
+static u32 hw_ccmp_imm(vm_ctx_t *vm) { return h_ccmp_imm(vm); }
+__attribute__((noinline)) VM_SECTION_ALU
+static u32 hw_ccmn_reg(vm_ctx_t *vm) { return h_ccmn_reg(vm); }
+__attribute__((noinline)) VM_SECTION_ALU
+static u32 hw_ccmn_imm(vm_ctx_t *vm) { return h_ccmn_imm(vm); }
+
+/* ---- SVC ---- */
+__attribute__((noinline)) VM_SECTION_SYSTEM
+static u32 hw_svc(vm_ctx_t *vm) { return h_svc(vm); }
+
 /* ================================================================
  * 跳转表运行时初始化 (绝对函数指针)
  *
@@ -227,6 +249,7 @@ static void vm_init_jump_table(vm_handler_fn *tbl) {
     tbl[OP_ASR] = hw_asr;
     tbl[OP_NOT] = hw_not;
     tbl[OP_ROR] = hw_ror;
+    tbl[OP_UMULH] = hw_umulh;
 
     /* ALU 立即数 */
     tbl[OP_ADD_IMM] = hw_add_imm;
@@ -268,6 +291,19 @@ static void vm_init_jump_table(vm_handler_fn *tbl) {
     /* SIMD */
     tbl[OP_VLD16] = hw_vld16;
     tbl[OP_VST16] = hw_vst16;
+
+    /* TBZ/TBNZ */
+    tbl[OP_TBZ]  = hw_tbz;
+    tbl[OP_TBNZ] = hw_tbnz;
+
+    /* CCMP/CCMN */
+    tbl[OP_CCMP_REG] = hw_ccmp_reg;
+    tbl[OP_CCMP_IMM] = hw_ccmp_imm;
+    tbl[OP_CCMN_REG] = hw_ccmn_reg;
+    tbl[OP_CCMN_IMM] = hw_ccmn_imm;
+
+    /* SVC */
+    tbl[OP_SVC] = hw_svc;
 }
 
 #endif /* VM_INDIRECT_DISPATCH */

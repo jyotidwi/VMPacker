@@ -345,6 +345,7 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
   dtab[OP_ASR] = &&L_ASR;
   dtab[OP_NOT] = &&L_NOT;
   dtab[OP_ROR] = &&L_ROR;
+  dtab[OP_UMULH] = &&L_UMULH;
   /* ALU 立即数 */
   dtab[OP_ADD_IMM] = &&L_ADD_IMM;
   dtab[OP_SUB_IMM] = &&L_SUB_IMM;
@@ -380,6 +381,16 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
   /* SIMD */
   dtab[OP_VLD16] = &&L_VLD16;
   dtab[OP_VST16] = &&L_VST16;
+  /* TBZ/TBNZ */
+  dtab[OP_TBZ]  = &&L_TBZ;
+  dtab[OP_TBNZ] = &&L_TBNZ;
+  /* CCMP/CCMN */
+  dtab[OP_CCMP_REG] = &&L_CCMP_REG;
+  dtab[OP_CCMP_IMM] = &&L_CCMP_IMM;
+  dtab[OP_CCMN_REG] = &&L_CCMN_REG;
+  dtab[OP_CCMN_IMM] = &&L_CCMN_IMM;
+  /* SVC */
+  dtab[OP_SVC] = &&L_SVC;
 
 /* 反向模式: pc 指向指令末尾的 size 标记之后
  * 步骤: pc--; size = bc[pc]; pc -= size; 现在 pc 指向指令起始 */
@@ -486,6 +497,8 @@ L_NOT:
   NEXT(h_not(vm));
 L_ROR:
   NEXT(h_ror(vm));
+L_UMULH:
+  NEXT(h_umulh(vm));
 
 /* ---- ALU 立即数 ---- */
 L_ADD_IMM:
@@ -572,6 +585,28 @@ L_VLD16:
   NEXT(h_vld16(vm));
 L_VST16:
   NEXT(h_vst16(vm));
+
+/* ---- TBZ/TBNZ (分支, handler 返回 0, 已设置 pc) ---- */
+L_TBZ:
+  h_tbz(vm);
+  NEXT0();
+L_TBNZ:
+  h_tbnz(vm);
+  NEXT0();
+
+/* ---- CCMP/CCMN ---- */
+L_CCMP_REG:
+  NEXT(h_ccmp_reg(vm));
+L_CCMP_IMM:
+  NEXT(h_ccmp_imm(vm));
+L_CCMN_REG:
+  NEXT(h_ccmn_reg(vm));
+L_CCMN_IMM:
+  NEXT(h_ccmn_imm(vm));
+
+/* ---- SVC ---- */
+L_SVC:
+  NEXT(h_svc(vm));
 
 /* ---- 未知指令 ---- */
 L_UNKNOWN:

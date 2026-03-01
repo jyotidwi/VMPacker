@@ -47,6 +47,7 @@ const (
 	AND_REG
 	ORR_REG
 	EOR_REG
+	EON
 	ANDS_REG
 	LSL_REG
 	LSR_REG
@@ -94,9 +95,18 @@ const (
 	SVC
 	MADD
 	MSUB
+	UMULH
 	EXTR
 	LD1_16B
 	ST1_16B
+	ADD_EXT
+	SUB_EXT
+	ADDS_EXT
+	SUBS_EXT
+	CCMP_REG
+	CCMP_IMM
+	CCMN_REG
+	CCMN_IMM
 	ANDS_IMM
 	UNSUPPORTED
 )
@@ -227,10 +237,10 @@ func OpName(op Op) string {
 		ADD_REG: "ADD(reg)", SUB_REG: "SUB(reg)",
 		ADDS_REG: "ADDS(reg)", SUBS_REG: "SUBS(reg)",
 		AND_REG: "AND(reg)", ORR_REG: "ORR(reg)", EOR_REG: "EOR(reg)",
-		ANDS_REG: "ANDS(reg)",
+		EON: "EON", ANDS_REG: "ANDS(reg)",
 		LSL_REG:  "LSL(reg)", LSR_REG: "LSR(reg)",
 		ASR_REG: "ASR(reg)", ROR_REG: "ROR(reg)",
-		MUL: "MUL", MADD: "MADD", MSUB: "MSUB",
+		MUL: "MUL", MADD: "MADD", MSUB: "MSUB", UMULH: "UMULH",
 		SDIV: "SDIV", UDIV: "UDIV", MVN: "MVN",
 		LDR_IMM: "LDR(imm)", LDRB_IMM: "LDRB(imm)", LDRH_IMM: "LDRH(imm)",
 		LDRSB_IMM: "LDRSB(imm)", LDRSH_IMM: "LDRSH(imm)", LDRSW_IMM: "LDRSW(imm)",
@@ -245,6 +255,10 @@ func OpName(op Op) string {
 		EXTR:    "EXTR",
 		LD1_16B: "LD1{16B}", ST1_16B: "ST1{16B}",
 		ANDS_IMM: "ANDS(imm)",
+		ADD_EXT: "ADD(ext)", SUB_EXT: "SUB(ext)",
+		ADDS_EXT: "ADDS(ext)", SUBS_EXT: "SUBS(ext)",
+		CCMP_REG: "CCMP(reg)", CCMP_IMM: "CCMP(imm)",
+		CCMN_REG: "CCMN(reg)", CCMN_IMM: "CCMN(imm)",
 	}
 	if n, ok := names[op]; ok {
 		return n

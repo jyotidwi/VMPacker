@@ -92,4 +92,24 @@ static inline u32 h_vst16(vm_ctx_t *vm) {
   return 3;
 }
 
+/* SVC #imm16  [3B: op | imm16_lo | imm16_hi]
+ * 执行 Linux syscall: X8=syscall号, X0-X5=参数, 结果写回 X0
+ * imm16 通常为 0 (Linux AArch64 只用 svc #0) */
+static inline u32 h_svc(vm_ctx_t *vm) {
+  /* 从 VM 寄存器读取 syscall 参数 */
+  register long x8 __asm__("x8") = (long)vm->R[8];   /* syscall number */
+  register long x0 __asm__("x0") = (long)vm->R[0];
+  register long x1 __asm__("x1") = (long)vm->R[1];
+  register long x2 __asm__("x2") = (long)vm->R[2];
+  register long x3 __asm__("x3") = (long)vm->R[3];
+  register long x4 __asm__("x4") = (long)vm->R[4];
+  register long x5 __asm__("x5") = (long)vm->R[5];
+  __asm__ volatile("svc #0"
+                   : "+r"(x0)
+                   : "r"(x8), "r"(x1), "r"(x2), "r"(x3), "r"(x4), "r"(x5)
+                   : "memory");
+  vm->R[0] = (u64)x0;
+  return 3;
+}
+
 #endif /* H_SYSTEM_H */

@@ -207,3 +207,32 @@ func (t *Translator) trCSEL(inst vm.Instruction) error {
 
 	return nil
 }
+
+// trTBZ 翻译 TBZ/TBNZ — test bit and branch
+// 字节码: [OpTbz/OpTbnz][reg][bit][target32] = 7B
+// inst.Shift = bit number (b5:b40), inst.Imm = offset (已乘4)
+func (t *Translator) trTBZ(inst vm.Instruction, isZero bool) error {
+	target := inst.Offset + int(inst.Imm)
+
+	if target < 0 || target > t.funcSize {
+		return fmt.Errorf("TBZ/TBNZ 分支目标 0x%X 超出函数范围 [0, 0x%X)", target, t.funcSize)
+	}
+
+	rd, err := t.mapReg(inst.Rd)
+	if err != nil {
+		return err
+	}
+
+	var vmOp byte
+	if isZero {
+		vmOp = vm.OpTbz
+	} else {
+		vmOp = vm.OpTbnz
+	}
+
+	t.emit(vmOp, rd, byte(inst.Shift))
+	fixPos := t.pos()
+	t.emitU32(0)
+	t.fixups = append(t.fixups, branchFixup{vmOffset: fixPos, arm64Target: target})
+	return nil
+}

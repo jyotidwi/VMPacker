@@ -931,15 +931,19 @@ func PrintELFInfo(path string) error {
 	return nil
 }
 
-// isBranchOpcode 判断 opcode 是否为分支指令 (含 target32 操作数)
-// 分支指令编码: [op(1B)][target32(4B)] = 5B
-func isBranchOpcode(op byte) bool {
+// branchTargetOffset 返回分支指令中 target32 相对于 pc 的字节偏移
+// 标准分支: [op(1B)][target32(4B)] = 5B → offset=1
+// TBZ/TBNZ: [op(1B)][reg(1B)][bit(1B)][target32(4B)] = 7B → offset=3
+// 非分支指令返回 0
+func branchTargetOffset(op byte) int {
 	switch op {
 	case vm.OpJmp, vm.OpJe, vm.OpJne, vm.OpJl, vm.OpJge,
 		vm.OpJgt, vm.OpJle, vm.OpJb, vm.OpJae, vm.OpJbe, vm.OpJa:
-		return true
+		return 1
+	case vm.OpTbz, vm.OpTbnz:
+		return 3
 	}
-	return false
+	return 0
 }
 
 // reverseInstructions 反转指令顺序并追加 size 标记
@@ -1005,14 +1009,14 @@ func remapBranchTargets(bytecode []byte, codeLen int, offsetMap map[int]int, ver
 		if sz == 0 {
 			sz = 1
 		}
-		if isBranchOpcode(op) && pc+5 <= codeLen {
-			oldTarget := binary.LittleEndian.Uint32(bytecode[pc+1:])
+		if toff := branchTargetOffset(op); toff > 0 && pc+toff+4 <= codeLen {
+			oldTarget := binary.LittleEndian.Uint32(bytecode[pc+toff:])
 			if newTarget, ok := offsetMap[int(oldTarget)]; ok {
 				if verbose {
 					fmt.Printf("      [REMAP] pc=0x%04X op=0x%02X target: 0x%04X → 0x%04X\n",
 						pc, op, oldTarget, newTarget)
 				}
-				binary.LittleEndian.PutUint32(bytecode[pc+1:], uint32(newTarget))
+				binary.LittleEndian.PutUint32(bytecode[pc+toff:], uint32(newTarget))
 			} else if verbose {
 				fmt.Printf("      [REMAP] pc=0x%04X op=0x%02X target: 0x%04X → NOT FOUND!\n",
 					pc, op, oldTarget)

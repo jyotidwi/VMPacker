@@ -44,6 +44,7 @@ var opTable = map[byte]opInfo{
 	OpAsr: {"ASR", 4},
 	OpNot: {"NOT", 3}, // op + dst + src
 	OpRor: {"ROR", 4},
+	OpUmulh: {"UMULH", 4},
 
 	OpAddImm: {"ADD_IMM", 7}, // op + d + s + imm32
 	OpSubImm: {"SUB_IMM", 7},
@@ -81,6 +82,16 @@ var opTable = map[byte]opInfo{
 
 	OpVld16: {"VLD16", 3}, // op + rn + len
 	OpVst16: {"VST16", 3},
+
+	OpTbz:  {"TBZ", 7},  // op + reg + bit + target32
+	OpTbnz: {"TBNZ", 7},
+
+	OpCcmpReg: {"CCMP_REG", 6}, // op + cond + nzcv + rn + rm + sf
+	OpCcmpImm: {"CCMP_IMM", 6},
+	OpCcmnReg: {"CCMN_REG", 6},
+	OpCcmnImm: {"CCMN_IMM", 6},
+
+	OpSvc: {"SVC", 3}, // op + imm16
 }
 
 // InstructionSize 返回指定 opcode 的指令总字节数 (0 = 未知)
@@ -149,7 +160,7 @@ func DisasmOne(code []byte, pc int) (string, int) {
 		width := map[byte]string{OpStore8: "8", OpStore16: "16", OpStore32: "32", OpStore64: "64"}[op]
 		return fmt.Sprintf("%04X: STORE%s [R%d + %d], R%d", pc, width, base, imm, src), 5
 
-	case OpAdd, OpSub, OpMul, OpXor, OpAnd, OpOr, OpShl, OpShr, OpAsr, OpRor:
+	case OpAdd, OpSub, OpMul, OpXor, OpAnd, OpOr, OpShl, OpShr, OpAsr, OpRor, OpUmulh:
 		return fmt.Sprintf("%04X: %s R%d, R%d, R%d",
 			pc, info.Name, code[pc+1], code[pc+2], code[pc+3]), 4
 
@@ -196,6 +207,27 @@ func DisasmOne(code []byte, pc int) (string, int) {
 		return fmt.Sprintf("%04X: VLD16 R%d, %d", pc, code[pc+1], code[pc+2]), 3
 	case OpVst16:
 		return fmt.Sprintf("%04X: VST16 R%d, %d", pc, code[pc+1], code[pc+2]), 3
+
+	case OpTbz, OpTbnz:
+		reg := code[pc+1]
+		bit := code[pc+2]
+		target := binary.LittleEndian.Uint32(code[pc+3:])
+		return fmt.Sprintf("%04X: %s R%d, #%d, 0x%04X", pc, info.Name, reg, bit, target), 7
+
+	case OpCcmpReg, OpCcmpImm, OpCcmnReg, OpCcmnImm:
+		cond := code[pc+1]
+		nzcv := code[pc+2]
+		rn := code[pc+3]
+		rmOrImm := code[pc+4]
+		sf := code[pc+5]
+		if op == OpCcmpImm || op == OpCcmnImm {
+			return fmt.Sprintf("%04X: %s R%d, #%d, #%d, cond=%d sf=%d", pc, info.Name, rn, rmOrImm, nzcv, cond, sf), 6
+		}
+		return fmt.Sprintf("%04X: %s R%d, R%d, #%d, cond=%d sf=%d", pc, info.Name, rn, rmOrImm, nzcv, cond, sf), 6
+
+	case OpSvc:
+		imm := binary.LittleEndian.Uint16(code[pc+1:])
+		return fmt.Sprintf("%04X: SVC #0x%X", pc, imm), 3
 
 	default:
 		return fmt.Sprintf("%04X: %s", pc, info.Name), info.Size

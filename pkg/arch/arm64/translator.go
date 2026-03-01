@@ -326,6 +326,8 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 		return 0, t.trAluReg(inst, vm.OpOr)
 	case EOR_REG:
 		return 0, t.trAluReg(inst, vm.OpXor)
+	case EON:
+		return 0, t.trEON(inst)
 	case MVN:
 		rd, err := t.mapReg(inst.Rd)
 		if err != nil {
@@ -367,7 +369,15 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 			if err != nil {
 				return 0, err
 			}
-			t.emit(vm.OpCmp, rn, rm)
+			if op == ADDS_REG {
+				// CMN Xn, Xm = ADDS XZR, Xn, Xm → flags based on Xn + Xm
+				t.emit(vm.OpAdd, 15, rn, rm)
+				t.emit(vm.OpCmpImm, 15)
+				t.emitU32(0)
+			} else {
+				// CMP Xn, Xm = SUBS XZR, Xn, Xm
+				t.emit(vm.OpCmp, rn, rm)
+			}
 			return 0, nil
 		}
 		if op == ADDS_REG {
@@ -444,6 +454,46 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 		return 0, t.trMADD(inst, false)
 	case MSUB:
 		return 0, t.trMADD(inst, true)
+	case UMULH:
+		return 0, t.trUmulh(inst)
+
+	// ========== 扩展寄存器加减 (T4) ==========
+	case ADD_EXT:
+		return 0, t.trAddSubExt(inst, vm.OpAdd, false)
+	case SUB_EXT:
+		return 0, t.trAddSubExt(inst, vm.OpSub, false)
+	case ADDS_EXT:
+		if inst.Rd == vm.REG_XZR {
+			// CMN Xn, Xm{ext} = ADDS XZR, Xn, ext(Xm)
+			return 0, t.trAddSubExt(inst, vm.OpAdd, true)
+		}
+		return 0, t.trAddSubExt(inst, vm.OpAdd, true)
+	case SUBS_EXT:
+		if inst.Rd == vm.REG_XZR {
+			// CMP Xn, Xm{ext} = SUBS XZR, Xn, ext(Xm)
+			return 0, t.trAddSubExt(inst, vm.OpSub, true)
+		}
+		return 0, t.trAddSubExt(inst, vm.OpSub, true)
+
+	// ========== TBZ/TBNZ (T5) ==========
+	case TBZ:
+		return 0, t.trTBZ(inst, true)
+	case TBNZ:
+		return 0, t.trTBZ(inst, false)
+
+	// ========== CCMP/CCMN (T6/T7) ==========
+	case CCMP_REG:
+		return 0, t.trCCMP(inst, false, false)
+	case CCMP_IMM:
+		return 0, t.trCCMP(inst, false, true)
+	case CCMN_REG:
+		return 0, t.trCCMP(inst, true, false)
+	case CCMN_IMM:
+		return 0, t.trCCMP(inst, true, true)
+
+	// ========== SVC (T8) ==========
+	case SVC:
+		return 0, t.trSVC(inst)
 
 	// ========== 寄存器偏移加载/存储 ==========
 	case LDR_REG, LDRB_REG:

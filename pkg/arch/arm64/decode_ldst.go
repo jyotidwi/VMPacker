@@ -120,6 +120,18 @@ var ldstPatterns = []InstrPattern{
 		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, fRn, fRd},
 		Post:   postUnscaled(false),
 	},
+	// STURB (byte unscaled)
+	{
+		Name: "STURB", Mask: 0xFFE00C00, Value: 0x38000000, Op: STRB_IMM,
+		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, fRn, fRd},
+		Post:   postUnscaled(false),
+	},
+	// LDURB (byte unscaled)
+	{
+		Name: "LDURB", Mask: 0xFFE00C00, Value: 0x38400000, Op: LDRB_IMM,
+		Fields: []FieldDef{{Name: "imm9", Hi: 20, Lo: 12, Signed: true}, fRn, fRd},
+		Post:   postUnscaled(false),
+	},
 
 	// ================================================================
 	// Load/Store register (immediate pre/post-index)
