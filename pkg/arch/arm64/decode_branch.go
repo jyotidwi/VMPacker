@@ -109,4 +109,20 @@ var branchPatterns = []InstrPattern{
 			inst.Imm = f["imm16"]
 		},
 	},
+
+	// ---- MRS (system register read) ----
+	// 编码: 1101010100:1:1:op0:op1:CRn:CRm:op2:Rt
+	// Mask: 0xFFF00000 = 0xD5300000 只匹配 MRS（不匹配 MSR）
+	// sysreg 编码: bits[20:5] = op0:op1:CRn:CRm:op2 (15位)
+	{
+		Name: "MRS", Mask: 0xFFF00000, Value: 0xD5300000, Op: MRS,
+		Fields: []FieldDef{
+			fRd,
+			{Name: "sysreg", Hi: 19, Lo: 5},
+		},
+		Post: func(f map[string]int64, inst *vm.Instruction) {
+			inst.Imm = f["sysreg"]
+			inst.SF = true // MRS always 64-bit
+		},
+	},
 }

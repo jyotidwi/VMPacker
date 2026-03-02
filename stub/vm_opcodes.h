@@ -32,18 +32,18 @@
 #define OP_STORE16 0xE8 /* STRH Xn, [Xb, #off16]        5B */
 
 /* ---- 算术/逻辑 (三寄存器) ---- */
-#define OP_ADD 0x37 /* ADD  Xd, Xn, Xm              4B: [op][d][n][m] */
-#define OP_SUB 0x6E /* SUB  Xd, Xn, Xm              4B */
-#define OP_MUL 0x83 /* MUL  Xd, Xn, Xm              4B */
-#define OP_XOR 0x1B /* EOR  Xd, Xn, Xm              4B */
-#define OP_AND 0x4D /* AND  Xd, Xn, Xm              4B */
-#define OP_OR 0x72  /* ORR  Xd, Xn, Xm              4B */
-#define OP_SHL 0xAE /* LSL  Xd, Xn, Xm              4B */
-#define OP_SHR 0xF1 /* LSR  Xd, Xn, Xm              4B */
-#define OP_ASR 0xDA /* ASR  Xd, Xn, Xm              4B */
+#define OP_ADD 0x37   /* ADD  Xd, Xn, Xm              4B: [op][d][n][m] */
+#define OP_SUB 0x6E   /* SUB  Xd, Xn, Xm              4B */
+#define OP_MUL 0x83   /* MUL  Xd, Xn, Xm              4B */
+#define OP_XOR 0x1B   /* EOR  Xd, Xn, Xm              4B */
+#define OP_AND 0x4D   /* AND  Xd, Xn, Xm              4B */
+#define OP_OR 0x72    /* ORR  Xd, Xn, Xm              4B */
+#define OP_SHL 0xAE   /* LSL  Xd, Xn, Xm              4B */
+#define OP_SHR 0xF1   /* LSR  Xd, Xn, Xm              4B */
+#define OP_ASR 0xDA   /* ASR  Xd, Xn, Xm              4B */
 #define OP_UMULH 0xF2 /* UMULH Xd, Xn, Xm            4B */
-#define OP_NOT 0x08 /* MVN  Xd, Xn                   3B: [op][d][n] */
-#define OP_ROR 0x3D /* ROR  Xd, Xn, Xm              4B */
+#define OP_NOT 0x08   /* MVN  Xd, Xn                   3B: [op][d][n] */
+#define OP_ROR 0x3D   /* ROR  Xd, Xn, Xm              4B */
 
 /* ---- 算术/逻辑 (寄存器 + 立即数) ---- */
 #define OP_ADD_IMM                                                             \
@@ -89,16 +89,29 @@
 #define OP_VST16 0xC2 /* ST1 {Vn.16B}, [Xn]            3B: [op][rn][len] */
 
 /* ---- TBZ/TBNZ ---- */
-#define OP_TBZ  0x16 /* TBZ  Xt, #bit, target          7B: [op][reg][bit][target32] */
-#define OP_TBNZ 0x17 /* TBNZ Xt, #bit, target          7B: [op][reg][bit][target32] */
+#define OP_TBZ                                                                 \
+  0x16 /* TBZ  Xt, #bit, target          7B: [op][reg][bit][target32] */
+#define OP_TBNZ                                                                \
+  0x17 /* TBNZ Xt, #bit, target          7B: [op][reg][bit][target32] */
 
 /* ---- CCMP/CCMN ---- */
-#define OP_CCMP_REG 0x18 /* CCMP Xn, Xm, #nzcv, cond   6B: [op][cond][nzcv][rn][rm][sf] */
-#define OP_CCMP_IMM 0x1A /* CCMP Xn, #imm5, #nzcv, cond 6B: [op][cond][nzcv][rn][imm5][sf] */
-#define OP_CCMN_REG 0x1C /* CCMN Xn, Xm, #nzcv, cond   6B: [op][cond][nzcv][rn][rm][sf] */
-#define OP_CCMN_IMM 0x1D /* CCMN Xn, #imm5, #nzcv, cond 6B: [op][cond][nzcv][rn][imm5][sf] */
+#define OP_CCMP_REG                                                            \
+  0x18 /* CCMP Xn, Xm, #nzcv, cond   6B: [op][cond][nzcv][rn][rm][sf] */
+#define OP_CCMP_IMM                                                            \
+  0x1A /* CCMP Xn, #imm5, #nzcv, cond 6B: [op][cond][nzcv][rn][imm5][sf] */
+#define OP_CCMN_REG                                                            \
+  0x1C /* CCMN Xn, Xm, #nzcv, cond   6B: [op][cond][nzcv][rn][rm][sf] */
+#define OP_CCMN_IMM                                                            \
+  0x1D /* CCMN Xn, #imm5, #nzcv, cond 6B: [op][cond][nzcv][rn][imm5][sf] */
 
 /* ---- SVC ---- */
 #define OP_SVC 0x1E /* SVC #imm16                      3B: [op][imm16_le] */
+
+/* ---- UDIV ---- */
+#define OP_UDIV 0x1F /* UDIV Xd, Xn, Xm                4B: [op][d][n][m] */
+
+/* ---- MRS ---- */
+#define OP_MRS                                                                 \
+  0x20 /* MRS Xd, <sysreg>               4B: [op][d][sysreg_lo][sysreg_hi] */
 
 #endif /* VM_OPCODES_H */

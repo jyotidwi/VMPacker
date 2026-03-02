@@ -113,7 +113,14 @@ func (t *Translator) trAluRegFlags(inst vm.Instruction, vmOp byte, setFlags bool
 	}
 
 	if inst.Shift != 0 {
-		// 根据 ShiftType 选择正确的移位操作
+		// 32-bit 模式: VM 的移位 handler 全部按 64-bit 操作
+		// ARM64 W-register shifted operand (EOR Wd, Wn, Wm, LSR #n 等) 是 32-bit 移位
+		// 必须先截断输入到 32-bit，移位后再截断输出
+		if !inst.SF {
+			t.emit(vm.OpAndImm, 15, rm) // R15 = Rm & 0xFFFFFFFF
+			t.emitU32(0xFFFFFFFF)
+			rm = 15
+		}
 		switch inst.ShiftType {
 		case 0: // LSL
 			t.emit(vm.OpShlImm, 15, rm)
@@ -121,13 +128,40 @@ func (t *Translator) trAluRegFlags(inst vm.Instruction, vmOp byte, setFlags bool
 		case 1: // LSR
 			t.emit(vm.OpShrImm, 15, rm)
 			t.emitU32(uint32(inst.Shift))
-		case 2: // ASR
-			t.emit(vm.OpAsrImm, 15, rm)
-			t.emitU32(uint32(inst.Shift))
-		case 3: // ROR — 无 OpRorImm，用三地址 OpRor + 临时寄存器
-			t.emit(vm.OpMovImm32, 14)
-			t.emitU32(uint32(inst.Shift))
-			t.emit(vm.OpRor, 15, rm, 14)
+		case 2: // ASR — 32-bit ASR 需要先符号扩展到 64-bit
+			if !inst.SF {
+				// 32-bit ASR: 先 SHL 32 使符号位到 bit63，再 ASR (32+shift)
+				t.emit(vm.OpShlImm, 15, rm)
+				t.emitU32(32)
+				t.emit(vm.OpAsrImm, 15, 15)
+				t.emitU32(32 + uint32(inst.Shift))
+			} else {
+				t.emit(vm.OpAsrImm, 15, rm)
+				t.emitU32(uint32(inst.Shift))
+			}
+		case 3: // ROR
+			if !inst.SF {
+				// 32-bit ROR: 不能用 64-bit OpRor（高位回绕会导致错误）
+				// 改用 SHR + SHL + OR 模拟: ROR32(v, n) = (v >> n) | (v << (32-n))
+				shift := uint32(inst.Shift) & 31
+				if shift == 0 {
+					// shift=0: no rotation needed, rm already in R15
+				} else {
+					t.emit(vm.OpShrImm, 14, rm) // R14 = R15 >> shift
+					t.emitU32(shift)
+					t.emit(vm.OpShlImm, 15, rm) // R15 = R15 << (32-shift)
+					t.emitU32(32 - shift)
+					t.emit(vm.OpOr, 15, 15, 14) // R15 = R15 | R14
+				}
+			} else {
+				t.emit(vm.OpMovImm32, 14)
+				t.emitU32(uint32(inst.Shift))
+				t.emit(vm.OpRor, 15, rm, 14)
+			}
+		}
+		// 32-bit 模式: 截断移位结果
+		if !inst.SF {
+			t.trunc32(15)
 		}
 		t.emit(vmOp, rd, rn, 15)
 	} else {
@@ -232,6 +266,12 @@ func (t *Translator) trEON(inst vm.Instruction) error {
 
 	// R15 = shift(Rm)
 	if inst.Shift != 0 {
+		// 32-bit 模式: 需要先截断输入
+		if !inst.SF {
+			t.emit(vm.OpAndImm, 15, rm)
+			t.emitU32(0xFFFFFFFF)
+			rm = 15
+		}
 		switch inst.ShiftType {
 		case 0: // LSL
 			t.emit(vm.OpShlImm, 15, rm)
@@ -240,12 +280,36 @@ func (t *Translator) trEON(inst vm.Instruction) error {
 			t.emit(vm.OpShrImm, 15, rm)
 			t.emitU32(uint32(inst.Shift))
 		case 2: // ASR
-			t.emit(vm.OpAsrImm, 15, rm)
-			t.emitU32(uint32(inst.Shift))
+			if !inst.SF {
+				t.emit(vm.OpShlImm, 15, rm)
+				t.emitU32(32)
+				t.emit(vm.OpAsrImm, 15, 15)
+				t.emitU32(32 + uint32(inst.Shift))
+			} else {
+				t.emit(vm.OpAsrImm, 15, rm)
+				t.emitU32(uint32(inst.Shift))
+			}
 		case 3: // ROR
-			t.emit(vm.OpMovImm32, 14)
-			t.emitU32(uint32(inst.Shift))
-			t.emit(vm.OpRor, 15, rm, 14)
+			if !inst.SF {
+				// 32-bit ROR: 用 SHR + SHL + OR 模拟
+				shift := uint32(inst.Shift) & 31
+				if shift == 0 {
+					// shift=0: no rotation
+				} else {
+					t.emit(vm.OpShrImm, 14, rm) // R14 = R15 >> shift
+					t.emitU32(shift)
+					t.emit(vm.OpShlImm, 15, rm) // R15 = R15 << (32-shift)
+					t.emitU32(32 - shift)
+					t.emit(vm.OpOr, 15, 15, 14) // R15 = R15 | R14
+				}
+			} else {
+				t.emit(vm.OpMovImm32, 14)
+				t.emitU32(uint32(inst.Shift))
+				t.emit(vm.OpRor, 15, rm, 14)
+			}
+		}
+		if !inst.SF {
+			t.trunc32(15)
 		}
 		rm = 15
 	}
@@ -558,5 +622,37 @@ func (t *Translator) trCCMP(inst vm.Instruction, isNeg bool, isImm bool) error {
 	}
 
 	t.emit(vmOp, byte(inst.Cond), byte(inst.WB), rn, rmOrImm, sf)
+	return nil
+}
+
+// trUDIV 翻译 UDIV Xd, Xn, Xm — 无符号除法
+// 格式: [OpUdiv][d][n][m] = 4B (和 MUL 格式一样)
+func (t *Translator) trUDIV(inst vm.Instruction) error {
+	rd, err := t.mapReg(inst.Rd)
+	if err != nil {
+		return err
+	}
+	rn, err := t.mapReg(inst.Rn)
+	if err != nil {
+		return err
+	}
+	rm, err := t.mapReg(inst.Rm)
+	if err != nil {
+		return err
+	}
+	t.emit(vm.OpUdiv, rd, rn, rm)
+	return nil
+}
+
+// trMRS 翻译 MRS Xd, <sysreg> — 读取系统寄存器
+// 格式: [OpMrs][d][sysreg_lo][sysreg_hi] = 4B
+// sysreg 是 15-bit 编码，存为 uint16 LE
+func (t *Translator) trMRS(inst vm.Instruction) error {
+	rd, err := t.mapReg(inst.Rd)
+	if err != nil {
+		return err
+	}
+	sysreg := uint16(inst.Imm & 0x7FFF)
+	t.emit(vm.OpMrs, rd, byte(sysreg&0xFF), byte(sysreg>>8))
 	return nil
 }

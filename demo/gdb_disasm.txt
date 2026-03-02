@@ -1,4 +1,0 @@
-﻿   0x10050ea0:	Cannot access memory at address 0x10050ea0
-
-   0x100025a0:	Cannot access memory at address 0x100025a0
-

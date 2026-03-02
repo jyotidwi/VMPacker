@@ -33,17 +33,17 @@ var opTable = map[byte]opInfo{
 	OpLoad16:  {"LOAD16", 5},
 	OpStore16: {"STORE16", 5},
 
-	OpAdd: {"ADD", 4}, // op + d + a + b
-	OpSub: {"SUB", 4},
-	OpMul: {"MUL", 4},
-	OpXor: {"XOR", 4},
-	OpAnd: {"AND", 4},
-	OpOr:  {"OR", 4},
-	OpShl: {"SHL", 4},
-	OpShr: {"SHR", 4},
-	OpAsr: {"ASR", 4},
-	OpNot: {"NOT", 3}, // op + dst + src
-	OpRor: {"ROR", 4},
+	OpAdd:   {"ADD", 4}, // op + d + a + b
+	OpSub:   {"SUB", 4},
+	OpMul:   {"MUL", 4},
+	OpXor:   {"XOR", 4},
+	OpAnd:   {"AND", 4},
+	OpOr:    {"OR", 4},
+	OpShl:   {"SHL", 4},
+	OpShr:   {"SHR", 4},
+	OpAsr:   {"ASR", 4},
+	OpNot:   {"NOT", 3}, // op + dst + src
+	OpRor:   {"ROR", 4},
 	OpUmulh: {"UMULH", 4},
 
 	OpAddImm: {"ADD_IMM", 7}, // op + d + s + imm32
@@ -83,7 +83,7 @@ var opTable = map[byte]opInfo{
 	OpVld16: {"VLD16", 3}, // op + rn + len
 	OpVst16: {"VST16", 3},
 
-	OpTbz:  {"TBZ", 7},  // op + reg + bit + target32
+	OpTbz:  {"TBZ", 7}, // op + reg + bit + target32
 	OpTbnz: {"TBNZ", 7},
 
 	OpCcmpReg: {"CCMP_REG", 6}, // op + cond + nzcv + rn + rm + sf
@@ -92,6 +92,9 @@ var opTable = map[byte]opInfo{
 	OpCcmnImm: {"CCMN_IMM", 6},
 
 	OpSvc: {"SVC", 3}, // op + imm16
+
+	OpUdiv: {"UDIV", 4}, // op + d + n + m
+	OpMrs:  {"MRS", 4},  // op + d + sysreg_lo + sysreg_hi
 }
 
 // InstructionSize 返回指定 opcode 的指令总字节数 (0 = 未知)
@@ -160,7 +163,7 @@ func DisasmOne(code []byte, pc int) (string, int) {
 		width := map[byte]string{OpStore8: "8", OpStore16: "16", OpStore32: "32", OpStore64: "64"}[op]
 		return fmt.Sprintf("%04X: STORE%s [R%d + %d], R%d", pc, width, base, imm, src), 5
 
-	case OpAdd, OpSub, OpMul, OpXor, OpAnd, OpOr, OpShl, OpShr, OpAsr, OpRor, OpUmulh:
+	case OpAdd, OpSub, OpMul, OpXor, OpAnd, OpOr, OpShl, OpShr, OpAsr, OpRor, OpUmulh, OpUdiv:
 		return fmt.Sprintf("%04X: %s R%d, R%d, R%d",
 			pc, info.Name, code[pc+1], code[pc+2], code[pc+3]), 4
 
@@ -228,6 +231,11 @@ func DisasmOne(code []byte, pc int) (string, int) {
 	case OpSvc:
 		imm := binary.LittleEndian.Uint16(code[pc+1:])
 		return fmt.Sprintf("%04X: SVC #0x%X", pc, imm), 3
+
+	case OpMrs:
+		dst := code[pc+1]
+		sysreg := binary.LittleEndian.Uint16(code[pc+2:])
+		return fmt.Sprintf("%04X: MRS R%d, sysreg=0x%04X", pc, dst, sysreg), 4
 
 	default:
 		return fmt.Sprintf("%04X: %s", pc, info.Name), info.Size

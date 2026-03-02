@@ -1,4 +1,0 @@
-000000000000009c T test_arith
-00000000000000b0 T test_memory
-00000000000000b8 T test_struct
-00000000000000c4 T test_branch

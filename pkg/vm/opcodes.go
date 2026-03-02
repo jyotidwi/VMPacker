@@ -30,18 +30,18 @@ const (
 	OpStore16  byte = 0xE8 // *(u16*)(Rx+i16) = Ry  5B: [op][base][src][imm16]
 
 	// 算术运算 — 三地址: [op][d][a][b] = 4B
-	OpAdd byte = 0x37
-	OpSub byte = 0x6E
-	OpMul byte = 0x83
-	OpXor byte = 0x1B
-	OpAnd byte = 0x4D
-	OpOr  byte = 0x72
-	OpShl byte = 0xAE
+	OpAdd   byte = 0x37
+	OpSub   byte = 0x6E
+	OpMul   byte = 0x83
+	OpXor   byte = 0x1B
+	OpAnd   byte = 0x4D
+	OpOr    byte = 0x72
+	OpShl   byte = 0xAE
 	OpShr   byte = 0xF1 // 逻辑右移
 	OpAsr   byte = 0xDA // 算术右移
 	OpUmulh byte = 0xF2 // UMULH Xd,Xn,Xm  4B: [op][d][n][m]
-	OpNot byte = 0x08 // NOT Rx, Ry — 3B
-	OpRor byte = 0x3D // 循环右移
+	OpNot   byte = 0x08 // NOT Rx, Ry — 3B
+	OpRor   byte = 0x3D // 循环右移
 
 	// 立即数算术: [op][d][s][imm32] = 7B
 	OpAddImm byte = 0xE5
@@ -99,6 +99,12 @@ const (
 
 	// SVC: [op][imm16_lo][imm16_hi] = 3B
 	OpSvc byte = 0x1E // SVC #imm16
+
+	// UDIV: [op][d][n][m] = 4B (和 MUL 格式一样)
+	OpUdiv byte = 0x1F // UDIV Xd, Xn, Xm
+
+	// MRS: [op][d][sysreg_lo][sysreg_hi] = 4B
+	OpMrs byte = 0x20 // MRS Xd, <sysreg>
 )
 
 // 标志位

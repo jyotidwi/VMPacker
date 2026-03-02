@@ -415,6 +415,10 @@ __attribute__((section(".text.entry"))) u64 vm_entry(u64 *args, u8 *enc_bc,
   dtab[OP_CCMN_IMM] = &&L_CCMN_IMM;
   /* SVC */
   dtab[OP_SVC] = &&L_SVC;
+  /* UDIV */
+  dtab[OP_UDIV] = &&L_UDIV;
+  /* MRS */
+  dtab[OP_MRS] = &&L_MRS;
 
 /* 反向模式: pc 指向指令末尾的 size 标记之后
  * 步骤: pc--; size = bc[pc]; pc -= size; 现在 pc 指向指令起始 */
@@ -632,6 +636,14 @@ L_CCMN_IMM:
 /* ---- SVC ---- */
 L_SVC:
   NEXT(h_svc(vm));
+
+/* ---- UDIV ---- */
+L_UDIV:
+  NEXT(h_udiv(vm));
+
+/* ---- MRS ---- */
+L_MRS:
+  NEXT(h_mrs(vm));
 
 /* ---- 未知指令 ---- */
 L_UNKNOWN:

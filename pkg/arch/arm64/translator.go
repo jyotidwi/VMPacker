@@ -505,6 +505,14 @@ func (t *Translator) translateOne(instructions []vm.Instruction, idx int) (int, 
 	case SVC:
 		return 0, t.trSVC(inst)
 
+	// ========== UDIV ==========
+	case UDIV:
+		return 0, t.trUDIV(inst)
+
+	// ========== MRS ==========
+	case MRS:
+		return 0, t.trMRS(inst)
+
 	// ========== 寄存器偏移加载/存储 ==========
 	case LDR_REG, LDRB_REG:
 		return 0, t.trLoadReg(inst)

@@ -1,3 +1,0 @@
-result = 0xffffc1f8568e85e0
-result2 = 0xffffd5f7db12da9c
-result3 = 0xffffc1c3a9976c4a

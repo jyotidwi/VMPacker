@@ -112,6 +112,7 @@ const (
 	CCMN_REG
 	CCMN_IMM
 	ANDS_IMM
+	MRS
 	UNSUPPORTED
 )
 
@@ -266,6 +267,7 @@ func OpName(op Op) string {
 		ADDS_EXT: "ADDS(ext)", SUBS_EXT: "SUBS(ext)",
 		CCMP_REG: "CCMP(reg)", CCMP_IMM: "CCMP(imm)",
 		CCMN_REG: "CCMN(reg)", CCMN_IMM: "CCMN(imm)",
+		MRS: "MRS",
 	}
 	if n, ok := names[op]; ok {
 		return n

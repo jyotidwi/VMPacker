@@ -1,221 +1,309 @@
-<div align="center">
-
-# 🛡️ VMP — ARM64 ELF Virtual Machine Protection
-
-**轻量级 ARM64 ELF 虚拟化保护工具**
-
-将目标函数的 ARM64 机器码翻译为自定义 VM 字节码，运行时由嵌入的 VM 解释器执行。
-有效抵抗 IDA Pro / Ghidra 等静态分析工具的反编译。
-
-[![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?logo=go&logoColor=white)](https://go.dev)
-[![ARM64](https://img.shields.io/badge/Arch-ARM64%20|%20AArch64-red)](https://developer.arm.com)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-
-</div>
+<p align="center">
+  <h1 align="center">🛡️ VMPacker</h1>
+  <p align="center">
+    <strong>ARM64 ELF Virtual Machine Protection System</strong>
+  </p>
+  <p align="center">
+    Translate ARM64 native instructions into custom VM bytecode for function-level code protection
+  </p>
+  <p align="center">
+    <a href="README_CN.md">🇨🇳 中文文档</a> •
+    <a href="#features">Features</a> •
+    <a href="#architecture">Architecture</a> •
+    <a href="#quick-start">Quick Start</a> •
+    <a href="#usage">Usage</a> •
+    <a href="#license">License</a>
+  </p>
+</p>
 
 ---
 
-## 🎯 功能特性
+## Overview
 
-- **ARM64 指令虚拟化** — 支持 100+ 条 ARM64 指令（含 NEON SIMD、STP/LDP、CSEL 等复杂指令）
-- **按函数名保护** — 指定符号名自动定位并保护
-- **按地址保护** — 适用于 stripped 二进制，直接指定 IDA Pro 中看到的地址
-- **自动函数边界检测** — 仅指定起始地址即可自动扫描到 RET 确定函数大小
-- **PT_NOTE → PT_LOAD 注入** — 不破坏原始段布局，零副作用
-- **XOR 字节码加密** — 运行时解密，增加静态分析难度
-- **符号表清除** — 自动 strip，防止逆向工具恢复函数名
-- **批量保护** — 一次保护多个函数
+VMPacker is a **Virtual Machine Protection (VMP)** system for **ARM64 (AArch64) Linux ELF** binaries. It decodes target function's native ARM64 instructions into an intermediate representation, translates them into custom VM bytecode, and injects an embedded VM interpreter into the ELF file. At runtime, protected functions are executed by the VM interpreter instead of natively.
 
-## 📐 架构概览
+### Core Concept
 
 ```
-原始 ELF                              保护后 ELF
-┌──────────────────┐                  ┌──────────────────┐
-│  ELF Header      │                  │  ELF Header      │
-├──────────────────┤                  ├──────────────────┤
-│  .text           │                  │  .text           │
-│  ┌────────────┐  │                  │  ┌────────────┐  │
-│  │ func_A:    │  │   ARM64→VM       │  │ func_A:    │  │
-│  │ 原始指令    │──┼──翻译加密──→     │  │ BL interp  │  │ ← 跳板
-│  └────────────┘  │                  │  └────────────┘  │
-├──────────────────┤                  ├──────────────────┤
-│  PT_NOTE (无用)  │──劫持──→         │  PT_LOAD (RX)    │ ← 新段
-│                  │                  │  ┌────────────┐  │
-│                  │                  │  │ VM Interp   │  │ 解释器 blob
-│                  │                  │  │ Bytecode    │  │ 加密字节码
-│                  │                  │  └────────────┘  │
-└──────────────────┘                  └──────────────────┘
+ARM64 Native Code  →  Decode  →  Translate  →  Custom VM Bytecode
+                                                      ↓
+                    Original ELF  ←  Inject  ←  VM Interpreter Stub
 ```
 
-**保护流程**: 解码 ARM64 → 翻译为 VM 字节码 → XOR 加密 → 注入 PT_LOAD → 原函数替换为跳板 → Strip 符号表
+## Features
 
-## 📁 项目结构
+### 🔄 Instruction Translation Engine
+- **58+ VM instructions** — covering ALU, memory, branch, syscall, and more
+- **Table-driven decoder** — pattern matching based on the ARM Architecture Reference Manual
+- **80+ ARM64 instructions** supported, including:
+  - Arithmetic/Logic (ADD, SUB, MUL, AND, ORR, EOR, LSL, LSR, ASR, MVN...)
+  - Data Movement (MOV, MOVZ, MOVK, MOVN)
+  - Memory Access (LDR, STR, LDP, STP — various widths and addressing modes)
+  - Branch Control (B, BL, BR, BLR, RET, B.cond, CBZ/CBNZ, TBZ/TBNZ)
+  - Conditional Select (CSEL, CSINC, CSINV, CSNEG)
+  - Compare/Conditional (CMP, CCMP, CCMN)
+  - Bitfield (UBFM, SBFM, EXTR)
+  - SIMD Load/Store (LD1, ST1)
+  - System (SVC, MRS, ADRP/ADR)
+
+### 🔐 Multi-Layer Protection
+| Layer | Technique | Description |
+|-------|-----------|-------------|
+| **VM Protection** | Custom ISA | Randomly mapped opcodes — reverse engineers cannot directly identify instruction semantics |
+| **OpcodeCryptor** | Per-instruction opcode encryption | `enc[pc] = op[pc] ^ (key ^ (pc * 0x9E3779B9))` |
+| **Bytecode Reversal** | Execution order reversal | Instructions stored in reverse order; interpreter traverses backwards |
+| **Token Entry** | 3-instruction trampoline | Original function replaced with tokenized entry, hiding actual bytecode location |
+| **Indirect Dispatch** | Function pointer jump table | Filled at runtime on the stack, breaking IDA cross-references |
+
+### 🖥️ GUI (Early Preview)
+- Cross-platform desktop app built with **Wails v2** (Go + Vue 3)
+- Element Plus UI components
+- ⚠️ **Current Status**: The GUI is in early development — only the main UI framework and basic interactions are implemented. Full integration with the backend protection engine is still in progress. **The CLI tool is the recommended way to use VMPacker.**
+
+## Architecture
 
 ```
 vmp/
-├── cmd/vmpacker/              # CLI 入口
-│   ├── main.go                # 命令行解析 + //go:embed
-│   └── vm_interp.bin          # VM 解释器 blob (编译产物，自动嵌入)
-├── pkg/
-│   ├── vm/                    # VM 核心抽象
-│   │   ├── types.go           # 接口: Decoder, Translator, Packer
-│   │   └── opcodes.go         # VM 操作码定义
-│   ├── arch/arm64/            # ARM64 架构支持
-│   │   ├── decoder.go         # ARM64 指令解码器
-│   │   ├── decoder_test.go    # 解码器单元测试
-│   │   ├── translator.go      # ARM64 → VM 字节码翻译
-│   │   └── translator_test.go # 翻译器单元测试
-│   └── binary/elf/            # ELF 二进制操作
-│       ├── packer.go          # ELF 注入 (PT_NOTE hijack)
-│       └── trampoline.go      # ARM64 跳板代码生成
-├── stub/                      # VM 解释器 (C 源码)
-│   ├── vm_interp_clean.c      # 解释器核心实现
-│   ├── vm_interp.lds          # 链接脚本 (.rodata → .text)
-│   ├── vm_opcodes.h           # 操作码定义 (与 Go 侧同步)
-│   ├── vm_types.h             # VM 数据类型定义
-│   └── vm_decode.h            # 字节码解码宏
-├── demo/                      # 示例程序
-│   ├── demo_license.c         # License 验证示例
-│   └── demo_simple.c          # 简单测试示例
-├── Makefile                   # 构建系统
-└── go.mod
+├── cmd/vmpacker/          # CLI entry point
+│   ├── main.go            # CLI argument parsing + orchestration
+│   ├── vm_interp.bin      # Compiled VM interpreter (GCC)
+│   └── vm_interp_ollvm.bin # Compiled VM interpreter (OLLVM obfuscated)
+│
+├── pkg/                   # Go core library
+│   ├── arch/arm64/        # ARM64 architecture support
+│   │   ├── decoder.go     # Table-driven instruction decoder (implements vm.Decoder)
+│   │   ├── decode_*.go    # Decode pattern tables (DP-IMM/DP-REG/Branch/LdSt)
+│   │   ├── translator.go  # ARM64 → VM bytecode translator
+│   │   ├── tr_alu.go      # ALU instruction translation
+│   │   ├── tr_branch.go   # Branch instruction translation
+│   │   ├── tr_loadstore.go # Memory instruction translation
+│   │   ├── tr_bitfield.go # Bitfield instruction translation
+│   │   └── tr_special.go  # Special instructions (ADRP/ADR)
+│   ├── vm/                # VM ISA definitions
+│   │   ├── types.go       # Shared types + interfaces (Decoder/Translator/Packer)
+│   │   ├── opcodes.go     # 58+ VM opcode definitions (randomly mapped values)
+│   │   └── disasm.go      # VM bytecode disassembler
+│   └── binary/elf/        # ELF binary manipulation
+│       ├── packer.go      # ELF VMP injection (PT_NOTE hijack, trampoline generation)
+│       └── trampoline.go  # Trampoline code generation
+│
+├── stub/                  # C VM interpreter (compiled to PIC flat binary)
+│   ├── vm_interp_clean.c  # Interpreter main loop + entry points
+│   ├── vm_types.h         # VM CPU context (vm_ctx_t)
+│   ├── vm_opcodes.h       # C-side opcode definitions (synced with opcodes.go)
+│   ├── vm_decode.h        # Bytecode read utilities
+│   ├── vm_token.h         # Token encode/decode + descriptor table
+│   ├── vm_dispatch.h      # Indirect dispatch jump table
+│   ├── vm_crc.h           # CRC32 integrity check
+│   ├── vm_sections.h      # Handler section scattering macros
+│   ├── vm_interp.lds      # Linker script
+│   └── vm_handlers/       # Modular instruction handlers
+│       ├── h_alu.h        # Arithmetic/logic operations
+│       ├── h_mem.h        # Memory access
+│       ├── h_branch.h     # Branch/jump
+│       ├── h_cmp.h        # Compare/conditional
+│       ├── h_mov.h        # Data movement
+│       ├── h_stack.h      # Stack (PUSH/POP)
+│       └── h_system.h     # System (SVC/MRS/BLR/BR/RET)
+│
+├── vmp-gui/               # Wails GUI frontend
+│   ├── frontend/          # Vue 3 + Element Plus
+│   └── backend/           # Go backend bindings
+│
+└── build/                 # Pre-compiled tools + test artifacts
 ```
 
-## 🔧 编译环境
+### Modular Design
 
-### 依赖
+The project uses an **interface-driven** modular architecture, making it easy to extend to new ISAs and binary formats:
 
-| 工具 | 版本 | 用途 |
-|------|------|------|
-| **Go** | ≥ 1.21 | 编译 vmpacker |
-| **aarch64-linux-gnu-gcc** | 任意 | 交叉编译 VM 解释器 |
-| **aarch64-linux-gnu-ld** | 任意 | 链接 VM 解释器 |
-| **aarch64-linux-gnu-objcopy** | 任意 | 提取纯二进制 blob |
-| **GNU Make** | 任意 | 构建系统 |
+```go
+// Architecture decoder interface — extensible to x86, RISC-V
+type Decoder interface {
+    Decode(raw uint32, offset int) Instruction
+    InstName(op int) string
+}
 
-> **Windows 用户**: 可通过 [MSYS2](https://www.msys2.org/) 或 [WSL](https://learn.microsoft.com/en-us/windows/wsl/) 安装交叉编译工具链：
-> ```bash
-> # MSYS2
-> pacman -S mingw-w64-x86_64-aarch64-none-elf-gcc
-> # Ubuntu / WSL
-> sudo apt install gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
-> ```
+// Bytecode translator interface
+type Translator interface {
+    Translate(instructions []Instruction) (*TranslateResult, error)
+}
 
-### 编译
-
-```bash
-# 一键编译（推荐）
-make all
-
-# 输出到 build/ 目录:
-#   build/vmpacker.exe    — Go packer 工具
-#   build/vm_interp.bin   — VM 解释器 blob
-#   build/stub/           — 编译中间产物
+// Binary format injector interface — extensible to PE, Mach-O
+type Packer interface {
+    Process() error
+}
 ```
 
-其他 Make 目标：
+### Protection Pipeline
 
-```bash
-make stub      # 仅编译 VM 解释器 blob
-make packer    # 仅编译 Go packer（需要先 make stub）
-make demo      # 交叉编译 demo 程序
-make test      # 运行单元测试
-make clean     # 清理所有产物
-make help      # 查看所有目标
+```mermaid
+graph LR
+    A[Input ELF] --> B[Locate Target Function]
+    B --> C[Extract ARM64 Instructions]
+    C --> D[Decode ARM64]
+    D --> E[Translate to VM Bytecode]
+    E --> F[XOR Encrypt Bytecode]
+    F --> G[Inject VM Interpreter]
+    G --> H[Generate Trampoline]
+    H --> I[Replace Function Entry]
+    I --> J[Output Protected ELF]
 ```
 
-## 🚀 使用方法
+## Quick Start
 
-### 按函数名保护
+### Prerequisites
+
+- **Go** 1.21+
+- **GCC** (aarch64-linux-gnu-gcc) — to compile the stub
+- **Linux ARM64** or cross-compilation environment
+
+### Installation
 
 ```bash
-# 单个函数
-./vmpacker -func check_license -o protected.elf original.elf
+git clone https://github.com/LeoChen-CoreMind/vmp.git
+cd vmp
+go build -o vmpacker ./cmd/vmpacker/
+```
 
-# 多个函数
-./vmpacker -func "check_license,verify_token" -o protected.elf original.elf
+## Usage
 
-# 详细输出（显示反汇编 + VM 字节码）
+### Protect by Function Name
+
+```bash
+# Protect a single function
 ./vmpacker -func check_license -v -o protected.elf original.elf
+
+# Protect multiple functions
+./vmpacker -func "check_license,verify_token" -v -o protected.elf original.elf
 ```
 
-### 按地址保护（适用于 stripped 二进制）
+### Protect by Address Range
 
 ```bash
-# 指定地址范围（IDA Pro 中直接看到的 start-end）
-./vmpacker -addr "0x4006AC-0x400790" -o protected.elf stripped.elf
+# Specify address range
+./vmpacker -addr "0x4006AC-0x400790:main" -v -o protected.elf original.elf
 
-# 仅指定起始地址（自动扫描到 RET 确定大小）
-./vmpacker -addr "0x4006AC" -o protected.elf stripped.elf
-
-# 指定地址 + 自定义名称
-./vmpacker -addr "0x4006AC-0x400790:main" -o protected.elf stripped.elf
-
-# 混合使用：按名称 + 按地址
-./vmpacker -func verify -addr "0x4006AC-0x400790:main" -o protected.elf app.elf
+# Mixed mode
+./vmpacker -addr "0x4006AC-0x400790:main" -func verify -o protected.elf original.elf
 ```
 
-### 查看 ELF 信息
+### Inspect ELF Info
 
 ```bash
-./vmpacker -info original.elf
+./vmpacker -info input.elf
 ```
 
-### 完整参数
+### CLI Options
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `-func` | — | 要保护的函数名（逗号分隔） |
-| `-addr` | — | 按地址保护（格式: `0xADDR`, `0xSTART-0xEND`, 可选 `:name` 后缀） |
-| `-o` | `<input>.vmp` | 输出文件路径 |
-| `-v` | `false` | 详细输出（显示反汇编和字节码） |
-| `-strip` | `true` | 清除符号表 |
-| `-info` | `false` | 仅显示 ELF 信息 |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-func` | — | Function name(s) to protect (comma-separated) |
+| `-addr` | — | Protect by address (`0xSTART-0xEND[:name]`) |
+| `-o` | `input.vmp` | Output file path |
+| `-v` | `false` | Verbose output (show disassembly) |
+| `-strip` | `true` | Strip symbol table |
+| `-debug` | `false` | Generate ARM64 → VM bytecode debug mapping file |
+| `-token` | `true` | Token-based entry mode |
+| `-info` | `false` | Print ELF info only |
 
-## 🔒 反编译对抗
+## Building
 
-VM 解释器采用多层混淆防护：
+### Compile VM Interpreter Stub
 
-| 层级 | 技术 | IDA Pro 效果 |
-|------|------|--------------|
-| L1 | **Computed Goto** + XOR 加密跳转表 | 无法识别 switch 结构，handler 变成孤立代码块 |
-| L2 | **MBA 混淆** (Mixed Boolean Arithmetic) | `a+b` → `(a^b)+2*(a&b)`，反编译满屏位运算 |
-| L3 | **Opaque Predicates** | 虚假控制流分支，IDA 认为多路径可达 |
-| L4 | **符号表清除** | `.symtab`/`.strtab`/`.comment` 用随机数据覆盖 |
+```bash
+# Standard build (GCC)
+aarch64-linux-gnu-gcc -Os -nostdlib -fPIC -ffreestanding \
+  -o stub.elf stub/vm_interp_clean.c \
+  -T stub/vm_interp.lds
+aarch64-linux-gnu-objcopy -O binary stub.elf vm_interp.bin
+```
 
-## ⚠️ 注意事项
+### Compile CLI Tool
 
-### 架构与格式限制
+```bash
+go build -o vmpacker ./cmd/vmpacker/
+```
 
-- **仅支持 ARM64 (AArch64)** — 不支持 x86/MIPS/RISC-V 等其他架构
-- **仅支持 ELF 格式** — 不支持 PE (Windows) / Mach-O (macOS)
-- **仅支持静态链接的函数体** — 不能保护 PLT 桩或动态链接器代码
+### Build GUI
 
-### 函数约束
+```bash
+cd vmp-gui
+wails build
+```
 
-- 目标函数必须位于 `.text` section
-- 按地址保护时，地址必须 **4 字节对齐**（ARM64 指令长度）
-- 自动大小检测依赖 RET (`0xD65F03C0`) 指令，对于以 `B` 结尾的函数（尾调用优化）需要手动指定结束地址
-- 函数内的 **PC-relative 寻址**（如 `ADRP`+`ADD` 访问全局变量）在 VM 中通过直接地址计算处理，但需确保目标地址在运行时可达
+## VM ISA Reference
 
-### 编译注意
+VMPacker defines a custom Instruction Set Architecture (ISA) with **randomly mapped opcode values** to increase reverse-engineering difficulty.
 
-- VM 解释器 **必须** 使用 `-mcmodel=tiny` 编译，**禁止** `-fPIC`
-  - `-fPIC` 生成 `ADRP` 指令（4KB 页对齐寻址），blob 嵌入非对齐偏移时会崩溃
-  - `-mcmodel=tiny` 生成 `ADR` 指令（纯 PC-relative），无对齐要求
-- 链接脚本 `vm_interp.lds` 将 `.rodata` 合并到 `.text`，确保常量表可通过 PC-relative 访问
+> 📖 For the complete opcode table with encoding details, see the [Chinese documentation](README_CN.md#vm-isa-reference).
 
-### 使用建议
+### Instruction Categories
 
-- ⚡ **先在测试环境验证**，确认保护后的程序功能正常再部署生产
-- ⚡ **保留原始二进制备份**，保护操作不可逆
-- ⚡ 建议在 **真实 ARM64 硬件** 上测试，QEMU 用户模式可能存在兼容性问题
-- ⚡ `-v` 标志会输出全部反汇编和字节码，仅在调试时使用
+| Category | Count | Description |
+|----------|-------|-------------|
+| Data Movement | 3 | MOV_IMM64, MOV_IMM32, MOV_REG |
+| Arithmetic/Logic | 21 | ADD, SUB, MUL, XOR, AND, OR, SHL, SHR, ASR, NOT, ROR, UMULH + _IMM variants |
+| Memory Access | 8 | LOAD/STORE 8/16/32/64 |
+| Branch/Jump | 13 | JMP, JE, JNE, JL, JGE, JGT, JLE, JB, JAE, JBE, JA, TBZ, TBNZ |
+| Compare | 6 | CMP, CMP_IMM, CCMP_REG, CCMP_IMM, CCMN_REG, CCMN_IMM |
+| Stack | 2 | PUSH, POP |
+| System/Special | 8 | NOP, HALT, RET, CALL_NATIVE, CALL_REG, BR_REG, SVC, MRS |
+| SIMD | 2 | VLD16, VST16 |
+| **Total** | **63** | |
 
-### 安全声明
+## Roadmap
 
-> **本工具仅用于保护自有软件知识产权**，请勿用于恶意软件加壳、规避安全检测等违法用途。使用者应遵守所在地区法律法规，开发者不承担任何因滥用导致的法律责任。
+- [ ] **Full GUI Integration** — Complete GUI ↔ backend protection engine integration
+- [ ] **Hybrid Mode** — Partial native execution + partial VM protection
+- [ ] **Dynamic Opcode Mapping** — Generate unique ISA mapping per protection run
 
-## 📜 License
+## Contributing
 
-[MIT License](LICENSE) — 自由使用、修改、分发，需保留版权声明。
+Contributions are welcome! Please follow these guidelines:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/new-arch`
+3. Commit your changes: `git commit -m 'feat: add x86_64 decoder'`
+4. Push the branch: `git push origin feature/new-arch`
+5. Create a Pull Request
+
+### Commit Convention
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+- `feat:` New feature
+- `fix:` Bug fix
+- `refactor:` Code refactoring
+- `docs:` Documentation
+- `test:` Tests
+
+## License
+
+This project is licensed under the **[AGPL-3.0 License](LICENSE)**.
+
+**Why AGPL-3.0:**
+
+- ✅ **Strong Copyleft** — Any modifications or derivative works must be open-sourced under the same license
+- ✅ **Network Use Clause** — Providing this software's functionality as a network service also requires source disclosure
+- ✅ **Protects Core Technology** — Prevents closed-source commercial use of the protection engine
+- ✅ **Community Friendly** — Free to study, research, and improve — improvements must be shared back
+- ✅ **Commercial Licensing** — For closed-source commercial use, contact the author for a commercial license
+
+## ⚠️ Disclaimer
+
+> THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+>
+> This project is designed to provide **legitimate intellectual property protection** for software developers, helping to safeguard core algorithms and critical code in commercial software from unauthorized reverse engineering or theft.
+>
+> **User Notice:**
+> 1. You must comply with all applicable laws and regulations in your jurisdiction when using this software
+> 2. It is strictly prohibited to use this software for any illegal purpose, including but not limited to: malware development, circumventing security audits, infringing on others' intellectual property rights, or compromising computer system security
+> 3. The author(s) shall not be held liable for any direct or indirect consequences resulting from any person's use of this software
+> 4. By downloading, using, or distributing this software, you acknowledge that you have read and agreed to the above terms
+
+## Author
+
+**LeoChen** — [@LeoChen-CoreMind](https://github.com/LeoChen-CoreMind)
+
+Copyright © 2026 LeoChen. All rights reserved.

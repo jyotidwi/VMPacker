@@ -12,7 +12,6 @@
 #include "../vm_decode.h"
 #include "../vm_types.h"
 
-
 /* ========== 三寄存器 ALU (4B) ========== */
 
 /* ADD Xd, Xn, Xm */
@@ -178,6 +177,14 @@ static inline u32 h_asr_imm(vm_ctx_t *vm) {
   u32 imm = rd32(&vm->bc[vm->pc + 3]);
   vm->R[d & 31] = (u64)((i64)vm->R[n & 31] >> (imm & 63));
   return 7;
+}
+
+/* UDIV Xd, Xn, Xm (无符号除法, 除零返回0 — ARM64 规范) */
+static inline u32 h_udiv(vm_ctx_t *vm) {
+  u8 d = vm->bc[vm->pc + 1], a = vm->bc[vm->pc + 2], b = vm->bc[vm->pc + 3];
+  u64 divisor = vm->R[b & 31];
+  vm->R[d & 31] = (divisor == 0) ? 0 : (vm->R[a & 31] / divisor);
+  return 4;
 }
 
 #endif /* H_ALU_H */
