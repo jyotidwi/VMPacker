@@ -164,7 +164,7 @@ graph LR
 ```bash
 git clone https://github.com/LeoChen-CoreMind/vmp.git
 cd vmp
-go build -o vmpacker ./cmd/vmpacker/
+make all
 ```
 
 ## Usage
